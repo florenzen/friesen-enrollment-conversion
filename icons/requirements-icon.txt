@@ -1,0 +1,2 @@
+# Requirements for icon generation
+Pillow>=10.0.0 
