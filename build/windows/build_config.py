@@ -29,7 +29,7 @@ from pathlib import Path
 # Project information
 PROJECT_NAME = "friesen-enrollment-conversion"
 APP_NAME = "Friesen Enrollment Converter"
-VERSION = "1.0.0"
+VERSION = "0.0.1-dev"  # Default version for local development
 AUTHOR = "Florian Lorenzen"
 DESCRIPTION = "Friesen Enrollment Converter - Convert and process enrollment files"
 
@@ -119,13 +119,27 @@ ICON_FILE = PROJECT_ROOT / "icons" / "friesen_icon.ico"
 # Build output
 EXE_NAME = f"{APP_NAME.replace(' ', '')}.exe"
 
-def get_version_info():
+def get_version_info(version=None):
     """Return version info for Windows executable"""
+    if version is None:
+        version = VERSION
+    
+    # Convert version string to tuple for Windows version info
+    # Handle semantic versioning (e.g., "1.2.3" -> (1, 2, 3, 0))
+    version_parts = version.split('.')
+    if len(version_parts) >= 3:
+        major = int(version_parts[0])
+        minor = int(version_parts[1])
+        patch = int(version_parts[2])
+        build = 0
+    else:
+        major, minor, patch, build = 1, 0, 0, 0
+    
     return f"""
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=({VERSION.replace('.', ', ')}, 0),
-    prodvers=({VERSION.replace('.', ', ')}, 0),
+    filevers=({major}, {minor}, {patch}, {build}),
+    prodvers=({major}, {minor}, {patch}, {build}),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -140,12 +154,12 @@ VSVersionInfo(
         u'040904B0',
         [StringStruct(u'CompanyName', u'{AUTHOR}'),
         StringStruct(u'FileDescription', u'{DESCRIPTION}'),
-        StringStruct(u'FileVersion', u'{VERSION}'),
+        StringStruct(u'FileVersion', u'{version}'),
         StringStruct(u'InternalName', u'{APP_NAME}'),
         StringStruct(u'LegalCopyright', u'Copyright (c) 2024'),
         StringStruct(u'OriginalFilename', u'{EXE_NAME}'),
         StringStruct(u'ProductName', u'{APP_NAME}'),
-        StringStruct(u'ProductVersion', u'{VERSION}')])
+        StringStruct(u'ProductVersion', u'{version}')])
       ]),
     VarFileInfo([VarStruct(u'Translation', [1033, 1200])])
   ]
@@ -153,7 +167,7 @@ VSVersionInfo(
 """.format(
         AUTHOR=AUTHOR,
         DESCRIPTION=DESCRIPTION,
-        VERSION=VERSION,
+        version=version,
         APP_NAME=APP_NAME,
         EXE_NAME=EXE_NAME
     ) 

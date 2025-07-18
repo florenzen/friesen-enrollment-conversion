@@ -48,10 +48,11 @@ class BuildError(Exception):
     pass
 
 class WindowsBuilder:
-    def __init__(self):
+    def __init__(self, version=None):
         self.project_root = PROJECT_ROOT
         self.build_dir = BUILD_DIR
         self.spec_file = self.build_dir / "FriesenEnrollmentConverter.spec"
+        self.version = version or VERSION
         
     def validate_environment(self) -> None:
         """Validate that we can build"""
@@ -184,7 +185,10 @@ class WindowsBuilder:
         upx_setting = "True" if upx_available else "False"
         console_setting = "False" if PYINSTALLER_OPTIONS["windowed"] else "True"
         
-        # Create the spec file content
+        # Create the spec file content with version info
+        from build_config import get_version_info
+        version_info = get_version_info(self.version)
+        
         spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 
 block_cipher = None
@@ -227,6 +231,8 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     icon={f"'{icon_path}'" if icon_path else None},
+    version_file=None,
+    version_info={version_info},
 )
 '''
         
@@ -282,16 +288,19 @@ exe = EXE(
         print(f"✅ Build output validated: {exe_path}")
         return exe_path
     
-    def build(self) -> Path:
+    def build(self, skip_deps: bool = False) -> Path:
         """Main build process"""
-        print(f"🚀 Starting Windows build for {APP_NAME} v{VERSION}")
+        print(f"🚀 Starting Windows build for {APP_NAME} v{self.version}")
         print(f"   Target: {EXE_NAME}")
         print(f"   Project root: {self.project_root}")
         print()
         
         try:
             self.validate_environment()
-            self.install_build_dependencies()
+            if not skip_deps:
+                self.install_build_dependencies()
+            else:
+                print("⏭️  Skipping dependency installation...")
             self.clean_build_directories()
             self.generate_spec_file()
             self.run_pyinstaller()
@@ -325,8 +334,18 @@ def main():
         print(__doc__)
         sys.exit(0)
     
-    builder = WindowsBuilder()
-    builder.build()
+    # Parse command line arguments
+    skip_deps = "--skip-deps" in sys.argv
+    
+    # Extract version from command line
+    version = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--version" and i + 1 < len(sys.argv):
+            version = sys.argv[i + 1]
+            break
+    
+    builder = WindowsBuilder(version=version)
+    builder.build(skip_deps=skip_deps)
 
 if __name__ == "__main__":
     main() 

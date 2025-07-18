@@ -19,7 +19,7 @@ if not exist "src\main.py" (
 
 REM Run the Python build script
 echo Running build script...
-python build\windows\build.py
+python build\windows\build.py %*
 
 echo.
 echo Build process finished.
