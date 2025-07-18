@@ -37,7 +37,7 @@ from typing import Dict, List, Optional, Callable, Any
 from pathlib import Path
 
 try:
-    import pandas as pd
+    import openpyxl
     from pypdf import PdfReader, PdfWriter
     from reportlab.lib.colors import black, toColor
     from reportlab.lib.pagesizes import A4
@@ -45,15 +45,15 @@ try:
 except ImportError as e:
     # Handle missing dependencies gracefully
     missing_deps = []
-    if "pandas" in str(e):
-        missing_deps.append("pandas")
+    if "openpyxl" in str(e):
+        missing_deps.append("openpyxl")
     if "pypdf" in str(e):
         missing_deps.append("pypdf")
     if "reportlab" in str(e):
         missing_deps.append("reportlab")
     
     print(f"Missing dependencies: {', '.join(missing_deps)}")
-    print("Please install with: pip install pandas pypdf reportlab")
+    print("Please install with: pip install openpyxl pypdf reportlab")
 
 
 class ConversionError(Exception):
@@ -111,23 +111,51 @@ class Converter:
         # If no template found, we'll create a basic form
         return None
 
-    def _read_excel_data(self, excel_file: str) -> pd.DataFrame:
+    def _read_excel_data(self, excel_file: str) -> List[Dict[str, Any]]:
         """
-        Read the Excel file and return the data as a pandas DataFrame.
+        Read the Excel file and return the data as a list of dictionaries.
 
         Args:
             excel_file: Path to the Excel file
 
         Returns:
-            DataFrame containing the enrollment data
+            List of dictionaries containing the enrollment data
 
         Raises:
             ConversionError: If the Excel file cannot be read
         """
         try:
-            data = pd.read_excel(excel_file)
+            # Load the workbook and get the active worksheet
+            workbook = openpyxl.load_workbook(excel_file, data_only=True)
+            worksheet = workbook.active
+            
+            if worksheet is None:
+                raise ConversionError("No active worksheet found in Excel file")
+            
+            # Get the header row (first row)
+            headers = []
+            for cell in worksheet[1]:
+                headers.append(cell.value if cell.value is not None else "")
+            
+            # Read all data rows
+            data = []
+            max_row = worksheet.max_row
+            if max_row and max_row > 1:
+                for row_num in range(2, max_row + 1):
+                    row_data = {}
+                    for col_num, header in enumerate(headers, 1):
+                        cell_value = worksheet.cell(row=row_num, column=col_num).value
+                        # Convert None to empty string, keep other values as-is
+                        row_data[header] = "" if cell_value is None else str(cell_value)
+                    
+                    # Only add row if it has some data (not all empty)
+                    if any(value.strip() for value in row_data.values() if isinstance(value, str)):
+                        data.append(row_data)
+            
+            workbook.close()
             self._report_progress(f"Successfully read {len(data)} rows from Excel file")
             return data
+            
         except Exception as e:
             raise ConversionError(f"Error reading Excel file: {e}")
 
@@ -345,7 +373,7 @@ class Converter:
         try:
             # Check dependencies
             try:
-                import pandas as pd
+                import openpyxl
                 from pypdf import PdfReader, PdfWriter
                 from reportlab.pdfgen import canvas
             except ImportError as e:
@@ -355,7 +383,7 @@ class Converter:
             self._report_progress("Reading Excel file...")
             data = self._read_excel_data(excel_file)
 
-            if data.empty:
+            if not data:
                 raise ConversionError("Excel file is empty")
 
             # Get form template
@@ -371,9 +399,7 @@ class Converter:
 
             self._report_progress(f"Processing {total_rows} enrollment records...")
 
-            for counter, (index, row) in enumerate(data.iterrows(), start=1):
-                row_data = row.to_dict()
-                
+            for counter, row_data in enumerate(data, start=1):
                 # Report progress
                 name = f"{row_data.get('Nachname', 'N/A')}, {row_data.get('Vorname', 'N/A')}"
                 self._report_progress(f"Processing {counter}/{total_rows}: {name}")
@@ -414,21 +440,24 @@ class Converter:
         try:
             data = self._read_excel_data(excel_file)
             
+            # Get column names from first row (if data exists)
+            columns = list(data[0].keys()) if data else []
+            
             # Check required columns
             required_columns = ["Nachname", "Vorname"]
             optional_columns = ["Geburtsdatum", "Kurs"]
             
-            missing_required = [col for col in required_columns if col not in data.columns]
-            available_optional = [col for col in optional_columns if col in data.columns]
+            missing_required = [col for col in required_columns if col not in columns]
+            available_optional = [col for col in optional_columns if col in columns]
             
             return {
                 "valid": len(missing_required) == 0,
                 "total_rows": len(data),
-                "total_columns": len(data.columns),
-                "columns": list(data.columns),
+                "total_columns": len(columns),
+                "columns": columns,
                 "missing_required": missing_required,
                 "available_optional": available_optional,
-                "has_data": not data.empty
+                "has_data": len(data) > 0
             }
             
         except Exception as e:

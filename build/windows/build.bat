@@ -5,6 +5,9 @@ REM This batch file makes it easy to run the Python build script
 echo Friesen Enrollment Converter - Windows Build
 echo =====================================
 echo.
+echo IMPORTANT: Make sure you have installed runtime dependencies first:
+echo    pip install -r requirements.txt
+echo.
 
 REM Check if we're in the right directory
 if not exist "src\main.py" (

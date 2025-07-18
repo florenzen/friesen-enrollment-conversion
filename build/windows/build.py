@@ -75,6 +75,39 @@ class WindowsBuilder:
         if not (self.project_root / "src").exists():
             raise BuildError("Please run this script from the project root directory")
         
+        # Check if runtime dependencies are installed
+        runtime_deps = ["openpyxl", "pypdf", "reportlab", "customtkinter"]
+        missing_deps = []
+        
+        for dep in runtime_deps:
+            try:
+                __import__(dep)
+            except ImportError:
+                missing_deps.append(dep)
+        
+        if missing_deps:
+            print("❌ Missing runtime dependencies:")
+            for dep in missing_deps:
+                print(f"   - {dep}")
+            print("\nPlease install runtime dependencies first:")
+            print("   pip install -r requirements.txt")
+            print("\nThen run the build again.")
+            raise BuildError("Runtime dependencies not installed")
+        
+        print("✅ Runtime dependencies found")
+        
+        # Test converter import specifically
+        try:
+            # Add src to path temporarily
+            original_path = sys.path.copy()
+            sys.path.insert(0, str(self.project_root / "src"))
+            from converter import Converter, ConversionError
+            sys.path = original_path  # Restore original path
+            print("✅ Converter module import successful")
+        except ImportError as e:
+            print(f"❌ Converter module import failed: {e}")
+            print("This might cause issues in the bundled executable.")
+        
         # Check if form.pdf exists (optional)
         form_pdf = self.project_root / "resources" / "form.pdf"
         if form_pdf.exists():
@@ -94,7 +127,8 @@ class WindowsBuilder:
         
         try:
             subprocess.run([
-                sys.executable, "-m", "pip", "install", "-r", str(requirements_file)
+                sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
+                "--only-binary=all", "--upgrade"
             ], check=True, capture_output=True, text=True)
             print("✅ Build dependencies installed")
         except subprocess.CalledProcessError as e:
@@ -157,7 +191,7 @@ block_cipher = None
 
 a = Analysis(
     ['{main_script_path}'],
-    pathex=['{project_root_path}'],
+    pathex=['{project_root_path}', '{project_root_path}/src'],
     binaries=[],
     datas={DATA_FILES},
     hiddenimports={HIDDEN_IMPORTS},

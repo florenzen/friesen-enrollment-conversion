@@ -48,6 +48,7 @@ PYINSTALLER_OPTIONS = {
     "windowed": True,  # No console window
     "clean": True,
     "noconfirm": True,
+    "collect_all": ["openpyxl", "pypdf", "reportlab", "customtkinter"],
 }
 
 # CustomTkinter and PDF conversion specific settings
@@ -58,27 +59,40 @@ HIDDEN_IMPORTS = [
     "tkinter.messagebox",
     "PIL",
     "PIL._tkinter_finder",
+    # Our custom modules
+    "converter",
+    "src.converter",
     # PDF conversion dependencies
-    "pandas",
+    "openpyxl",
+    "openpyxl.workbook",
+    "openpyxl.worksheet",
+    "openpyxl.cell",
     "pypdf",
+    "pypdf._reader",
+    "pypdf._writer",
     "reportlab",
     "reportlab.pdfgen",
+    "reportlab.pdfgen.canvas",
     "reportlab.lib.colors",
     "reportlab.lib.pagesizes",
+    "reportlab.lib.styles",
+    "reportlab.platypus",
+    # Additional dependencies that might be needed
+    "et_xmlfile",
+    "packaging",
+    "darkdetect",
 ]
 
 # Files to exclude to reduce size
 EXCLUDES = [
     "matplotlib",
     "numpy",
-    # "pandas",  # Needed for PDF conversion
     "scipy",
     "jupyter",
     "IPython",
     "notebook",
     "pytest",
-    "setuptools",
-    "pip",
+    # Don't exclude setuptools/pip as they might be needed by dependencies
 ]
 
 # Data files to include (if any)

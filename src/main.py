@@ -259,7 +259,7 @@ class FriesenEnrollmentConverterApp:
                     self.update_status("Conversion dependencies not installed. Please install required packages.", "#ff0000")
                     messagebox.showerror(
                         "Missing Dependencies",
-                        "PDF conversion requires additional packages.\n\nPlease install:\npip install pandas pypdf reportlab",
+                        "PDF conversion requires additional packages.\n\nPlease install:\npip install openpyxl pypdf reportlab",
                         parent=self.root
                     )
                     return

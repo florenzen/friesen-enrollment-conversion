@@ -64,6 +64,8 @@ The application expects Excel files with the following columns:
 - **Geburtsdatum** (optional): Date of birth
 - **Kurs** (optional): Course/class information
 
+> **✅ Lightweight Design**: Uses `openpyxl` for Excel reading instead of heavy pandas - much faster builds and smaller executables!
+
 ## PDF Form Template
 
 You can optionally provide a custom PDF form template:
@@ -86,7 +88,6 @@ To create a standalone Windows executable (.exe file):
 ### Prerequisites
 - Windows machine or Windows VM
 - Python 3.8+ installed
-- Virtual environment activated with dependencies installed
 
 ### Build Process
 
@@ -95,7 +96,15 @@ To create a standalone Windows executable (.exe file):
    cd friesen-enrollment-conversion
    ```
 
-2. **Run the build script:**
+2. **Install runtime dependencies:**
+   ```cmd
+   pip install -r requirements.txt
+   ```
+   This installs: `openpyxl`, `pypdf`, `reportlab`, `customtkinter`
+
+
+
+3. **Run the build script:**
    ```cmd
    # Option 1: Use the batch file (recommended)
    build\windows\build.bat
@@ -103,8 +112,9 @@ To create a standalone Windows executable (.exe file):
    # Option 2: Run Python script directly  
    python build\windows\build.py
    ```
+   The build script will automatically install additional build-only dependencies (`pyinstaller`, etc.)
 
-3. **Find your executable:**
+4. **Find your executable:**
    - The `.exe` file will be created in `dist/FriesenEnrollmentConverter.exe`
    - This is a single, portable file that can run on any Windows machine
    - No Python installation required on target machines

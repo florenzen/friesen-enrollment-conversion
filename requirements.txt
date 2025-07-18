@@ -7,7 +7,6 @@
 customtkinter>=5.2.0
 
 # PDF conversion dependencies
-pandas>=2.0.0
+openpyxl>=3.0.0
 pypdf>=4.0.0
 reportlab>=4.0.0
-openpyxl>=3.0.0
