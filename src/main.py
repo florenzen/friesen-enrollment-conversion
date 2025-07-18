@@ -152,8 +152,12 @@ class ExcelConverterApp:
             self.update_status(f"File selected: {Path(filename).name} - Ready to convert!", "#00ff00")
             print(f"Selected file: {filename}")
     
-    def get_save_filename(self):
-        """Get save filename with repeated attempts if user cancels replacement"""
+    def convert_file(self):
+        """Open save dialog and copy/convert file"""
+        if not self.selected_file_path:
+            self.update_status("Please select a file first!", "#ff0000")
+            return
+        
         # Suggest filename based on original
         original_path = Path(self.selected_file_path)
         suggested_name = f"converted_{original_path.name}"
@@ -165,43 +169,14 @@ class ExcelConverterApp:
             ("All files", "*.*")
         ]
         
-        while True:
-            filename = filedialog.asksaveasfilename(
-                title="Save converted file as",
-                defaultextension=".xlsx",
-                filetypes=file_types,
-                initialfile=suggested_name,
-                parent=self.root
-            )
-            
-            if not filename:  # User cancelled the save dialog
-                return None
-                
-            # Check if file exists
-            if os.path.exists(filename):
-                # Ask user if they want to replace the existing file
-                response = messagebox.askyesno(
-                    "File Exists",
-                    f"The file '{Path(filename).name}' already exists.\n\nDo you want to replace it?",
-                    icon="warning",
-                    parent=self.root
-                )
-                
-                if response:  # User chose "Yes" to replace
-                    return filename
-                # If user chose "No", the while loop continues and shows save dialog again
-            else:
-                # File doesn't exist, proceed
-                return filename
-    
-    def convert_file(self):
-        """Open save dialog and copy/convert file"""
-        if not self.selected_file_path:
-            self.update_status("Please select a file first!", "#ff0000")
-            return
-        
-        # Get filename with replacement confirmation
-        filename = self.get_save_filename()
+        # Let the native save dialog handle file replacement confirmation
+        filename = filedialog.asksaveasfilename(
+            title="Save converted file as",
+            defaultextension=".xlsx",
+            filetypes=file_types,
+            initialfile=suggested_name,
+            parent=self.root
+        )
         
         if filename:  # User didn't cancel
             try:
@@ -210,8 +185,6 @@ class ExcelConverterApp:
                 self.save_file_path = filename
                 self.update_status(f"File converted successfully to: {Path(filename).name}", "#00ff00")
                 print(f"File copied to: {filename}")
-                
-                # Note: Removed the success dialog as requested
                 
             except Exception as e:
                 error_msg = f"Error saving file: {str(e)}"
