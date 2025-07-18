@@ -27,6 +27,18 @@ import os
 import shutil
 from pathlib import Path
 
+try:
+    # Try relative import first (when run as a module)
+    from .converter import Converter, ConversionError
+except ImportError:
+    try:
+        # Try absolute import (when run directly)
+        from converter import Converter, ConversionError
+    except ImportError:
+        # Handle case where converter dependencies are missing
+        Converter = None
+        ConversionError = Exception
+
 class FriesenEnrollmentConverterApp:
     def __init__(self):
         # Configure CustomTkinter appearance
@@ -151,7 +163,7 @@ class FriesenEnrollmentConverterApp:
         
         convert_label = ctk.CTkLabel(
             convert_frame,
-            text="Step 2: Convert File",
+            text="Step 2: Convert to PDF",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         convert_label.pack(pady=(20, 15))
@@ -222,21 +234,19 @@ class FriesenEnrollmentConverterApp:
             self.update_status("Please select a file first!", "#ff0000")
             return
         
-        # Suggest filename based on original
+        # Suggest filename based on original (change to PDF)
         original_path = Path(self.selected_file_path)
-        suggested_name = f"converted_{original_path.name}"
+        suggested_name = f"converted_{original_path.stem}.pdf"
         
         file_types = [
-            ("Excel files", "*.xlsx *.xls"),
-            ("Excel 2007+ files", "*.xlsx"),
-            ("Excel Legacy files", "*.xls"),
+            ("PDF files", "*.pdf"),
             ("All files", "*.*")
         ]
         
         # Let the native save dialog handle file replacement confirmation
         filename = filedialog.asksaveasfilename(
-            title="Save converted file as",
-            defaultextension=".xlsx",
+            title="Save converted PDF as",
+            defaultextension=".pdf",
             filetypes=file_types,
             initialfile=suggested_name,
             parent=self.root
@@ -244,21 +254,53 @@ class FriesenEnrollmentConverterApp:
         
         if filename:  # User didn't cancel
             try:
-                # For now, just copy the file (conversion logic will be added later)
-                shutil.copy2(self.selected_file_path, filename)
-                self.save_file_path = filename
-                self.update_status(f"File converted successfully to: {Path(filename).name}", "#00ff00")
-                print(f"File copied to: {filename}")
+                # Check if converter is available
+                if Converter is None:
+                    self.update_status("Conversion dependencies not installed. Please install required packages.", "#ff0000")
+                    messagebox.showerror(
+                        "Missing Dependencies",
+                        "PDF conversion requires additional packages.\n\nPlease install:\npip install pandas pypdf reportlab",
+                        parent=self.root
+                    )
+                    return
                 
+                # Convert Excel to PDF using the converter
+                self.update_status("Converting Excel to PDF...", "#ffaa00")
+                
+                # Create converter with progress callback
+                def progress_callback(message):
+                    self.update_status(message, "#ffaa00")
+                    self.root.update()  # Update UI during conversion
+                
+                converter = Converter(progress_callback=progress_callback)
+                
+                # Perform the conversion
+                converter.convert_excel_to_pdf(self.selected_file_path, filename)
+                
+                self.save_file_path = filename
+                self.update_status(f"Excel successfully converted to PDF: {Path(filename).name}", "#00ff00")
+                print(f"File converted to: {filename}")
+                
+            except ConversionError as e:
+                error_msg = f"Conversion error: {str(e)}"
+                self.update_status(error_msg, "#ff0000")
+                print(f"Conversion error: {e}")
+                
+                # Show error message
+                messagebox.showerror(
+                    "Conversion Error", 
+                    f"Failed to convert file:\n{str(e)}",
+                    parent=self.root
+                )
             except Exception as e:
-                error_msg = f"Error saving file: {str(e)}"
+                error_msg = f"Unexpected error: {str(e)}"
                 self.update_status(error_msg, "#ff0000")
                 print(f"Error: {e}")
                 
                 # Show error message
                 messagebox.showerror(
                     "Error", 
-                    f"Failed to save file:\n{str(e)}",
+                    f"Failed to convert file:\n{str(e)}",
                     parent=self.root
                 )
         else:

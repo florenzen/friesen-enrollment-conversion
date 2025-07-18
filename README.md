@@ -1,6 +1,6 @@
 # Friesen Enrollment Conversion
 
-A simple Python project with a modern GUI for enrollment file conversion.
+A Python application that converts Excel enrollment data to filled PDF forms.
 
 ## Setup
 
@@ -34,9 +34,9 @@ python src/main.py
 ### Features
 
 - **Modern GUI**: Built with CustomTkinter for a clean, modern appearance
-- **Open table**: Click to select an enrollment file (.xlsx or .xls) using a native file dialog
+- **Open table**: Click to select an Excel enrollment file (.xlsx or .xls) using a native file dialog
 - **File path display**: Shows the path of the currently selected file in a read-only field
-- **Convert**: Saves the selected enrollment file to a new location (currently just copies the file)
+- **Convert to PDF**: Converts Excel enrollment data to a multi-page PDF with filled forms (one page per enrollment record)
 - **Status updates**: Real-time feedback with color-coded status messages
 - **Cross-platform**: Works on Windows, macOS, and Linux
 
@@ -55,6 +55,18 @@ The application features a dark theme with:
 - **File Handling**: Native system file dialogs
 - **Error Handling**: Comprehensive error handling with user feedback
 - **Architecture**: Object-oriented design for maintainability
+
+## Excel File Format
+
+The application expects Excel files with the following columns:
+- **Nachname** (required): Last name
+- **Vorname** (required): First name  
+- **Geburtsdatum** (optional): Date of birth
+- **Kurs** (optional): Course/class information
+
+## PDF Form Template
+
+You can optionally place a PDF form template at `resources/form.pdf`. If no template is provided, the application will generate basic enrollment forms automatically.
 
 ## Building Windows Executable
 
