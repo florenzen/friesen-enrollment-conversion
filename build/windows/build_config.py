@@ -28,10 +28,10 @@ from pathlib import Path
 
 # Project information
 PROJECT_NAME = "friesen-enrollment-conversion"
-APP_NAME = "Excel File Converter"
+APP_NAME = "Friesen Enrollment Converter"
 VERSION = "1.0.0"
 AUTHOR = "Your Name"
-DESCRIPTION = "Excel File Converter - Convert and process Excel files"
+DESCRIPTION = "Friesen Enrollment Converter - Convert and process enrollment files"
 
 # Paths (relative to project root)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -43,7 +43,7 @@ WORK_DIR = PROJECT_ROOT / "build" / "temp"
 
 # PyInstaller settings
 PYINSTALLER_OPTIONS = {
-    "name": "ExcelConverter",
+    "name": "FriesenEnrollmentConverter",
     "onefile": True,
     "windowed": True,  # No console window
     "clean": True,

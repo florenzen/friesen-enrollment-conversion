@@ -1,8 +1,8 @@
 @echo off
-REM Windows Build Script - Excel File Converter
+REM Windows Build Script - Friesen Enrollment Converter
 REM This batch file makes it easy to run the Python build script
 
-echo Excel File Converter - Windows Build
+echo Friesen Enrollment Converter - Windows Build
 echo =====================================
 echo.
 

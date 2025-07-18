@@ -27,7 +27,7 @@ import os
 import shutil
 from pathlib import Path
 
-class ExcelConverterApp:
+class FriesenEnrollmentConverterApp:
     def __init__(self):
         # Configure CustomTkinter appearance
         ctk.set_appearance_mode("dark")  # Modes: "System" (standard), "Dark", "Light"
@@ -35,7 +35,7 @@ class ExcelConverterApp:
         
         # Create main window
         self.root = ctk.CTk()
-        self.root.title("Excel File Converter")
+        self.root.title("Friesen Enrollment Converter")
         self.root.resizable(True, True)
         
         # Variables to store file paths
@@ -57,7 +57,7 @@ class ExcelConverterApp:
         # Title
         title_label = ctk.CTkLabel(
             main_frame, 
-            text="Excel File Converter",
+            text="Friesen Enrollment Converter",
             font=ctk.CTkFont(size=24, weight="bold")
         )
         title_label.pack(pady=(20, 25))
@@ -68,7 +68,7 @@ class ExcelConverterApp:
         
         open_label = ctk.CTkLabel(
             open_frame,
-            text="Step 1: Select Excel File",
+            text="Step 1: Select Enrollment File",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         open_label.pack(pady=(20, 15))
@@ -138,14 +138,14 @@ class ExcelConverterApp:
         
         self.status_label = ctk.CTkLabel(
             status_frame,
-            text="Ready - Please select an Excel file to begin",
+            text="Ready - Please select an enrollment file to begin",
             font=ctk.CTkFont(size=12),
             text_color="#00ff00"  # Green color for ready status
         )
         self.status_label.pack(anchor="w", padx=20, pady=(0, 25))  # More bottom padding
         
     def open_file_dialog(self):
-        """Open file dialog to select Excel file"""
+        """Open file dialog to select enrollment file"""
         file_types = [
             ("Excel files", "*.xlsx *.xls"),
             ("Excel 2007+ files", "*.xlsx"),
@@ -154,7 +154,7 @@ class ExcelConverterApp:
         ]
         
         filename = filedialog.askopenfilename(
-            title="Select Excel file",
+            title="Select enrollment file",
             filetypes=file_types,
             parent=self.root
         )
@@ -232,7 +232,7 @@ class ExcelConverterApp:
         self.root.mainloop()
 
 def main():
-    app = ExcelConverterApp()
+    app = FriesenEnrollmentConverterApp()
     app.run()
 
 if __name__ == "__main__":

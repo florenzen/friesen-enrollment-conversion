@@ -22,7 +22,7 @@
 # SOFTWARE.
 
 """
-Windows Build Script for Excel File Converter
+Windows Build Script for Friesen Enrollment Converter
 
 This script builds a single-file Windows executable using PyInstaller.
 Run this script from the project root directory.
@@ -51,7 +51,7 @@ class WindowsBuilder:
     def __init__(self):
         self.project_root = PROJECT_ROOT
         self.build_dir = BUILD_DIR
-        self.spec_file = self.build_dir / "ExcelConverter.spec"
+        self.spec_file = self.build_dir / "FriesenEnrollmentConverter.spec"
         
     def validate_environment(self) -> None:
         """Validate that we can build"""

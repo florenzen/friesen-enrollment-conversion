@@ -1,6 +1,6 @@
 # Friesen Enrollment Conversion
 
-A simple Python project with a modern GUI for Excel file conversion.
+A simple Python project with a modern GUI for enrollment file conversion.
 
 ## Setup
 
@@ -25,7 +25,7 @@ A simple Python project with a modern GUI for Excel file conversion.
 
 ## Usage
 
-Run the Excel File Converter application:
+Run the Friesen Enrollment Converter application:
 
 ```bash
 python src/main.py
@@ -34,9 +34,9 @@ python src/main.py
 ### Features
 
 - **Modern GUI**: Built with CustomTkinter for a clean, modern appearance
-- **Open table**: Click to select an Excel file (.xlsx or .xls) using a native file dialog
+- **Open table**: Click to select an enrollment file (.xlsx or .xls) using a native file dialog
 - **File path display**: Shows the path of the currently selected file in a read-only field
-- **Convert**: Saves the selected Excel file to a new location (currently just copies the file)
+- **Convert**: Saves the selected enrollment file to a new location (currently just copies the file)
 - **Status updates**: Real-time feedback with color-coded status messages
 - **Cross-platform**: Works on Windows, macOS, and Linux
 
@@ -82,7 +82,7 @@ To create a standalone Windows executable (.exe file):
    ```
 
 3. **Find your executable:**
-   - The `.exe` file will be created in `dist/ExcelConverter.exe`
+   - The `.exe` file will be created in `dist/FriesenEnrollmentConverter.exe`
    - This is a single, portable file that can run on any Windows machine
    - No Python installation required on target machines
 
