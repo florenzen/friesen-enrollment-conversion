@@ -13,8 +13,6 @@ class ExcelConverterApp:
         
         # Create main window
         self.root = ctk.CTk()
-        self.root.geometry("700x500")  # Start with a good size
-        self.root.minsize(600, 450)    # Set minimum size to ensure all content is always visible
         self.root.title("Excel File Converter")
         self.root.resizable(True, True)
         
@@ -23,6 +21,11 @@ class ExcelConverterApp:
         self.save_file_path = ""
         
         self.create_widgets()
+        
+        # Set size after widgets are created to ensure everything fits
+        self.root.update_idletasks()  # Calculate required size
+        self.root.geometry("800x700")  # Increased size to accommodate all content including full status text
+        self.root.minsize(750, 650)    # Increased minimum size to ensure all content is always visible
         
     def create_widgets(self):
         # Main container with padding
@@ -35,18 +38,18 @@ class ExcelConverterApp:
             text="Excel File Converter",
             font=ctk.CTkFont(size=24, weight="bold")
         )
-        title_label.pack(pady=(20, 20))
+        title_label.pack(pady=(20, 25))
         
         # Open table section
         open_frame = ctk.CTkFrame(main_frame)
-        open_frame.pack(fill="x", padx=20, pady=(0, 20))
+        open_frame.pack(fill="x", padx=20, pady=(0, 25))
         
         open_label = ctk.CTkLabel(
             open_frame,
             text="Step 1: Select Excel File",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        open_label.pack(pady=(15, 10))
+        open_label.pack(pady=(20, 15))
         
         self.open_button = ctk.CTkButton(
             open_frame,
@@ -56,18 +59,18 @@ class ExcelConverterApp:
             height=40,
             font=ctk.CTkFont(size=14, weight="bold")
         )
-        self.open_button.pack(pady=(0, 15))
+        self.open_button.pack(pady=(0, 20))
         
         # File path section
         path_frame = ctk.CTkFrame(main_frame)
-        path_frame.pack(fill="x", padx=20, pady=(0, 20))
+        path_frame.pack(fill="x", padx=20, pady=(0, 25))
         
         path_label = ctk.CTkLabel(
             path_frame,
             text="Selected file:",
             font=ctk.CTkFont(size=14, weight="bold")
         )
-        path_label.pack(anchor="w", padx=15, pady=(15, 5))
+        path_label.pack(anchor="w", padx=20, pady=(20, 8))
         
         self.file_path_entry = ctk.CTkEntry(
             path_frame,
@@ -76,18 +79,18 @@ class ExcelConverterApp:
             font=ctk.CTkFont(size=12),
             state="readonly"
         )
-        self.file_path_entry.pack(fill="x", padx=15, pady=(0, 15))
+        self.file_path_entry.pack(fill="x", padx=20, pady=(0, 20))
         
         # Convert section
         convert_frame = ctk.CTkFrame(main_frame)
-        convert_frame.pack(fill="x", padx=20, pady=(0, 20))
+        convert_frame.pack(fill="x", padx=20, pady=(0, 25))
         
         convert_label = ctk.CTkLabel(
             convert_frame,
             text="Step 2: Convert File",
             font=ctk.CTkFont(size=16, weight="bold")
         )
-        convert_label.pack(pady=(15, 10))
+        convert_label.pack(pady=(20, 15))
         
         self.convert_button = ctk.CTkButton(
             convert_frame,
@@ -98,18 +101,18 @@ class ExcelConverterApp:
             font=ctk.CTkFont(size=14, weight="bold"),
             state="disabled"  # Disabled until file is selected
         )
-        self.convert_button.pack(pady=(0, 15))
+        self.convert_button.pack(pady=(0, 20))
         
         # Status section
         status_frame = ctk.CTkFrame(main_frame)
-        status_frame.pack(fill="x", padx=20, pady=(0, 20))
+        status_frame.pack(fill="x", padx=20, pady=(0, 30))  # Extra bottom padding
         
         status_title = ctk.CTkLabel(
             status_frame,
             text="Status:",
             font=ctk.CTkFont(size=14, weight="bold")
         )
-        status_title.pack(anchor="w", padx=15, pady=(15, 5))
+        status_title.pack(anchor="w", padx=20, pady=(20, 8))
         
         self.status_label = ctk.CTkLabel(
             status_frame,
@@ -117,7 +120,7 @@ class ExcelConverterApp:
             font=ctk.CTkFont(size=12),
             text_color="#00ff00"  # Green color for ready status
         )
-        self.status_label.pack(anchor="w", padx=15, pady=(0, 15))
+        self.status_label.pack(anchor="w", padx=20, pady=(0, 25))  # More bottom padding
         
     def open_file_dialog(self):
         """Open file dialog to select Excel file"""
