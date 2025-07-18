@@ -38,6 +38,9 @@ class FriesenEnrollmentConverterApp:
         self.root.title("Friesen Enrollment Converter")
         self.root.resizable(True, True)
         
+        # Set window icon - try multiple approaches for compatibility
+        self._set_window_icon()
+        
         # Variables to store file paths
         self.selected_file_path = ""
         self.save_file_path = ""
@@ -48,6 +51,45 @@ class FriesenEnrollmentConverterApp:
         self.root.update_idletasks()  # Calculate required size
         self.root.geometry("800x700")  # Increased size to accommodate all content including full status text
         self.root.minsize(750, 650)    # Increased minimum size to ensure all content is always visible
+    
+    def _set_window_icon(self):
+        """Set the window icon using multiple fallback methods"""
+        try:
+            # Get resource path - works both in development and when bundled
+            def resource_path(relative_path):
+                """Get absolute path to resource, works for dev and for PyInstaller"""
+                import sys
+                # PyInstaller creates a temp folder and stores path in _MEIPASS
+                base_path = getattr(sys, '_MEIPASS', Path(__file__).parent.parent)
+                return Path(base_path) / relative_path
+            
+            # Try different icon files in order of preference
+            icon_files = [
+                "friesen_icon.ico",                # Bundled in exe root
+                "icons/friesen_icon.ico",          # Development path
+                "icons/friesen_icon_128x128.png",  # PNG fallback
+            ]
+            
+            for icon_file in icon_files:
+                try:
+                    icon_path = resource_path(icon_file)
+                    if icon_path.exists():
+                        # Use wm_iconbitmap for .ico files (better Windows support)
+                        if str(icon_path).endswith('.ico'):
+                            self.root.wm_iconbitmap(str(icon_path))
+                        else:
+                            # Try regular iconbitmap for PNG
+                            self.root.iconbitmap(str(icon_path))
+                        print(f"Successfully loaded icon: {icon_path}")
+                        return
+                except Exception as e:
+                    print(f"Failed to load icon {icon_file}: {e}")
+                    continue
+            
+            print("No icon files found, using default icon")
+            
+        except Exception as e:
+            print(f"Error setting window icon: {e}")
         
     def create_widgets(self):
         # Main container with padding

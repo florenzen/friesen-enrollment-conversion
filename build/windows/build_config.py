@@ -30,7 +30,7 @@ from pathlib import Path
 PROJECT_NAME = "friesen-enrollment-conversion"
 APP_NAME = "Friesen Enrollment Converter"
 VERSION = "1.0.0"
-AUTHOR = "Your Name"
+AUTHOR = "Florian Lorenzen"
 DESCRIPTION = "Friesen Enrollment Converter - Convert and process enrollment files"
 
 # Paths (relative to project root)
@@ -76,12 +76,13 @@ EXCLUDES = [
 
 # Data files to include (if any)
 DATA_FILES = [
-    # Add any data files your app needs
-    # ("source_path", "dest_path_in_exe")
+    # Include the icon file in the exe
+    (str(PROJECT_ROOT / "icons" / "friesen_icon.ico"), "."),
+    (str(PROJECT_ROOT / "icons" / "friesen_icon_128x128.png"), "."),
 ]
 
-# Icon file (optional)
-ICON_FILE = None  # Set to path of .ico file if you have one
+# Icon file (path to .ico file)
+ICON_FILE = PROJECT_ROOT / "icons" / "friesen_icon.ico"
 
 # Build output
 EXE_NAME = f"{APP_NAME.replace(' ', '')}.exe"

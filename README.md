@@ -85,6 +85,7 @@ To create a standalone Windows executable (.exe file):
    - The `.exe` file will be created in `dist/FriesenEnrollmentConverter.exe`
    - This is a single, portable file that can run on any Windows machine
    - No Python installation required on target machines
+   - The executable will include your custom icon
 
 ### Build Features
 - **Single file**: Everything bundled into one `.exe`
