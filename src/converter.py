@@ -32,7 +32,7 @@ import os
 import tempfile
 import shutil
 from datetime import datetime
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Any
 from pathlib import Path
 
 try:
@@ -85,7 +85,7 @@ class Converter:
         else:
             print(message)
 
-    def _get_form_template_path(self) -> Path:
+    def _get_form_template_path(self) -> Optional[Path]:
         """Get the path to the PDF form template"""
         # Try to find the form template in different locations
         possible_paths = [
@@ -133,6 +133,8 @@ class Converter:
         Returns:
             Path to the created PDF file
         """
+        if self.temp_dir is None:
+            raise ConversionError("Temporary directory not initialized")
         filename = os.path.join(self.temp_dir, f"filled_form_{page_number}.pdf")
 
         if template_path and template_path.exists():
@@ -386,7 +388,7 @@ class Converter:
             else:
                 raise ConversionError(f"Unexpected error during conversion: {e}")
 
-    def validate_excel_file(self, excel_file: str) -> Dict[str, any]:
+    def validate_excel_file(self, excel_file: str) -> Dict[str, Any]:
         """
         Validate an Excel file and return information about it.
 
