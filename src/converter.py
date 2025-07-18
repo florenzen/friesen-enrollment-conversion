@@ -29,6 +29,7 @@ the enrollment data filled into a form template.
 """
 
 import os
+import sys
 import tempfile
 import shutil
 from datetime import datetime
@@ -89,10 +90,19 @@ class Converter:
         """Get the path to the PDF form template"""
         # Try to find the form template in different locations
         possible_paths = [
+            # When running from source
             Path(__file__).parent.parent / "resources" / "form.pdf",
             Path("resources") / "form.pdf",
             Path("form.pdf"),
         ]
+        
+        # When running from PyInstaller bundle
+        if hasattr(sys, '_MEIPASS'):
+            # PyInstaller creates a temp folder and stores path in _MEIPASS
+            meipass_path = getattr(sys, '_MEIPASS', None)
+            if meipass_path:
+                bundle_resource_path = Path(meipass_path) / "resources" / "form.pdf"
+                possible_paths.insert(0, bundle_resource_path)
         
         for path in possible_paths:
             if path.exists():

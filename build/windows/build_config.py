@@ -50,7 +50,7 @@ PYINSTALLER_OPTIONS = {
     "noconfirm": True,
 }
 
-# CustomTkinter specific settings
+# CustomTkinter and PDF conversion specific settings
 HIDDEN_IMPORTS = [
     "customtkinter",
     "tkinter",
@@ -58,13 +58,20 @@ HIDDEN_IMPORTS = [
     "tkinter.messagebox",
     "PIL",
     "PIL._tkinter_finder",
+    # PDF conversion dependencies
+    "pandas",
+    "pypdf",
+    "reportlab",
+    "reportlab.pdfgen",
+    "reportlab.lib.colors",
+    "reportlab.lib.pagesizes",
 ]
 
 # Files to exclude to reduce size
 EXCLUDES = [
     "matplotlib",
     "numpy",
-    "pandas",
+    # "pandas",  # Needed for PDF conversion
     "scipy",
     "jupyter",
     "IPython",
@@ -75,11 +82,22 @@ EXCLUDES = [
 ]
 
 # Data files to include (if any)
-DATA_FILES = [
-    # Include the icon file in the exe
-    (str(PROJECT_ROOT / "icons" / "friesen_icon.ico"), "."),
-    (str(PROJECT_ROOT / "icons" / "friesen_icon_128x128.png"), "."),
-]
+def get_data_files():
+    """Get list of data files to include, checking if they exist"""
+    data_files = [
+        # Include the icon file in the exe
+        (str(PROJECT_ROOT / "icons" / "friesen_icon.ico"), "."),
+        (str(PROJECT_ROOT / "icons" / "friesen_icon_128x128.png"), "."),
+    ]
+    
+    # Include the PDF form template if it exists
+    form_pdf = PROJECT_ROOT / "resources" / "form.pdf"
+    if form_pdf.exists():
+        data_files.append((str(form_pdf), "resources"))
+    
+    return data_files
+
+DATA_FILES = get_data_files()
 
 # Icon file (path to .ico file)
 ICON_FILE = PROJECT_ROOT / "icons" / "friesen_icon.ico"

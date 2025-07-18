@@ -75,6 +75,13 @@ class WindowsBuilder:
         if not (self.project_root / "src").exists():
             raise BuildError("Please run this script from the project root directory")
         
+        # Check if form.pdf exists (optional)
+        form_pdf = self.project_root / "resources" / "form.pdf"
+        if form_pdf.exists():
+            print("✓ Form template found")
+        else:
+            print("ℹ️  Form template not found (optional) - basic forms will be generated")
+        
         print("✅ Environment validation passed")
     
     def install_build_dependencies(self) -> None:

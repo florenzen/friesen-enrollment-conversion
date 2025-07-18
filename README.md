@@ -66,7 +66,18 @@ The application expects Excel files with the following columns:
 
 ## PDF Form Template
 
-You can optionally place a PDF form template at `resources/form.pdf`. If no template is provided, the application will generate basic enrollment forms automatically.
+You can optionally provide a custom PDF form template:
+
+### **Option 1: Use Your Own Template**
+Place your custom PDF form at `resources/form.pdf`. The converter will use this template and fill in the data.
+
+### **Option 2: Auto-Generated Forms**
+If no template is provided, the application will automatically generate basic enrollment forms.
+
+### **Template Integration**
+- The form template is automatically bundled with the Windows executable
+- Fields are mapped to Excel columns: `Nachname`, `Vorname`, `Geburtsdatum`, `Kurs`
+- Template is optional - the app works with or without it
 
 ## Building Windows Executable
 
