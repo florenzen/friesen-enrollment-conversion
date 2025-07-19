@@ -86,7 +86,7 @@ jobs:
         tag_name: ${{ github.ref_name }}
         name: Friesen Enrollment Converter ${{ steps.version.outputs.version }}
         body: |
-          macOS DMG for Friesen Enrollment Converter v${{ steps.version.outputs.version }}
+          Friesen Enrollment Converter v${{ steps.version.outputs.version }}
         files: dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
