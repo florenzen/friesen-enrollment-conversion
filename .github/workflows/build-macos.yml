@@ -56,15 +56,15 @@ jobs:
     - name: Verify build output
       run: |
         # Check if the DMG was created
-        if [ -f "dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg" ]; then
-          size=$(stat -f%z "dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg")
+        if [ -f "dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg" ]; then
+          size=$(stat -f%z "dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg")
           size_mb=$(echo "scale=2; $size / 1048576" | bc)
           echo "SUCCESS: DMG created successfully"
-          echo "Location: dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg"
+          echo "Location: dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg"
           echo "Size: ${size_mb} MB"
         else
           echo "ERROR: DMG not found"
-          echo "Expected location: dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg"
+          echo "Expected location: dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg"
           echo "Directory contents:"
           ls -la dist/
           exit 1
@@ -84,6 +84,6 @@ jobs:
         name: Friesen Enrollment Converter ${{ steps.version.outputs.version }}
         body: |
           macOS DMG for Friesen Enrollment Converter v${{ steps.version.outputs.version }}
-        files: dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg
+        files: dist/macos/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.dmg
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
