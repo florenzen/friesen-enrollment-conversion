@@ -136,6 +136,11 @@ def get_version_info(version=None):
         major, minor, patch, build = 1, 0, 0, 0
     
     return f"""
+from PyInstaller.utils.win32.versioninfo import (
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable,
+    StringStruct, VarFileInfo, VarStruct
+)
+
 VSVersionInfo(
   ffi=FixedFileInfo(
     filevers=({major}, {minor}, {patch}, {build}),
