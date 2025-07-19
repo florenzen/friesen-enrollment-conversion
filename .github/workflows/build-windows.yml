@@ -36,11 +36,25 @@ jobs:
         # Pass version to build script
         python build/windows/build.py --version ${{ steps.version.outputs.version }}
         
+    - name: Rename executable with version
+      run: |
+        # Rename the executable to include version
+        $exePath = "dist/FriesenEnrollmentConverter.exe"
+        $newExePath = "dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.exe"
+        
+        if (Test-Path $exePath) {
+          Move-Item $exePath $newExePath
+          echo "Renamed executable to: $newExePath"
+        } else {
+          echo "ERROR: Executable not found at $exePath"
+          exit 1
+        }
+        
     - name: Upload executable
       uses: actions/upload-artifact@v4
       with:
         name: FriesenEnrollmentConverter-${{ steps.version.outputs.version }}
-        path: dist/FriesenEnrollmentConverter.exe
+        path: dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.exe
         retention-days: 30
         
     - name: Create Release
@@ -50,6 +64,15 @@ jobs:
         name: Friesen Enrollment Converter ${{ steps.version.outputs.version }}
         body: |
           Windows executable for Friesen Enrollment Converter v${{ steps.version.outputs.version }}
-        files: dist/FriesenEnrollmentConverter.exe
+          
+          ## Installation
+          1. Download the executable
+          2. Run on any Windows machine (no Python required)
+          3. Select Excel file and convert to PDF
+          
+          ## Requirements
+          - Windows 10 or later
+          - Excel files with columns: Nachname, Vorname, Geburtsdatum, Kurs
+        files: dist/FriesenEnrollmentConverter-${{ steps.version.outputs.version }}.exe
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
