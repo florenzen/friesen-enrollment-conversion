@@ -60,7 +60,7 @@ jobs:
     - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
-        tag_name: ${{ github.ref }}
+        tag_name: ${{ github.ref_name }}
         name: Friesen Enrollment Converter ${{ steps.version.outputs.version }}
         body: |
           Windows executable for Friesen Enrollment Converter v${{ steps.version.outputs.version }}
