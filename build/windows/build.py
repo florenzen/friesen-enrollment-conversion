@@ -56,11 +56,11 @@ class WindowsBuilder:
         
     def validate_environment(self) -> None:
         """Validate that we can build"""
-        print("🔍 Validating build environment...")
+        print("Validating build environment...")
         
         # Check if we're on Windows (recommended) or if user knows what they're doing
         if platform.system() != "Windows":
-            response = input("⚠️  You're not on Windows. Continue anyway? (y/N): ")
+            response = input("Warning: You're not on Windows. Continue anyway? (y/N): ")
             if response.lower() != 'y':
                 raise BuildError("Build cancelled - use Windows for best results")
         
@@ -87,7 +87,7 @@ class WindowsBuilder:
                 missing_deps.append(dep)
         
         if missing_deps:
-            print("❌ Missing runtime dependencies:")
+            print("ERROR: Missing runtime dependencies:")
             for dep in missing_deps:
                 print(f"   - {dep}")
             print("\nPlease install runtime dependencies first:")
@@ -95,7 +95,7 @@ class WindowsBuilder:
             print("\nThen run the build again.")
             raise BuildError("Runtime dependencies not installed")
         
-        print("✅ Runtime dependencies found")
+        print("OK: Runtime dependencies found")
         
         # Test converter import specifically
         try:
@@ -104,23 +104,23 @@ class WindowsBuilder:
             sys.path.insert(0, str(self.project_root / "src"))
             from converter import Converter, ConversionError
             sys.path = original_path  # Restore original path
-            print("✅ Converter module import successful")
+            print("OK: Converter module import successful")
         except ImportError as e:
-            print(f"❌ Converter module import failed: {e}")
+            print(f"ERROR: Converter module import failed: {e}")
             print("This might cause issues in the bundled executable.")
         
         # Check if form.pdf exists (optional)
         form_pdf = self.project_root / "resources" / "form.pdf"
         if form_pdf.exists():
-            print("✓ Form template found")
+            print("OK: Form template found")
         else:
-            print("ℹ️  Form template not found (optional) - basic forms will be generated")
+            print("INFO: Form template not found (optional) - basic forms will be generated")
         
-        print("✅ Environment validation passed")
+        print("OK: Environment validation passed")
     
     def install_build_dependencies(self) -> None:
         """Install build dependencies"""
-        print("📦 Installing build dependencies...")
+        print("Installing build dependencies...")
         
         requirements_file = self.build_dir / "requirements-build.txt"
         if not requirements_file.exists():
@@ -131,14 +131,14 @@ class WindowsBuilder:
                 sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
                 "--only-binary=all", "--upgrade"
             ], check=True, capture_output=True, text=True)
-            print("✅ Build dependencies installed")
+            print("OK: Build dependencies installed")
         except subprocess.CalledProcessError as e:
-            print(f"❌ Failed to install dependencies: {e.stderr}")
+            print(f"ERROR: Failed to install dependencies: {e.stderr}")
             raise BuildError("Dependency installation failed")
     
     def clean_build_directories(self) -> None:
         """Clean previous build artifacts"""
-        print("🧹 Cleaning previous build artifacts...")
+        print("Cleaning previous build artifacts...")
         
         dirs_to_clean = [DIST_DIR, WORK_DIR, self.project_root / "build" / "temp"]
         for dir_path in dirs_to_clean:
@@ -151,7 +151,7 @@ class WindowsBuilder:
             self.spec_file.unlink()
             print(f"   Removed: {self.spec_file}")
         
-        print("✅ Build directories cleaned")
+        print("OK: Build directories cleaned")
     
     def _check_upx_available(self) -> bool:
         """Check if UPX compression is available"""
@@ -163,7 +163,7 @@ class WindowsBuilder:
     
     def generate_spec_file(self) -> None:
         """Generate PyInstaller spec file"""
-        print("📄 Generating PyInstaller spec file...")
+        print("Generating PyInstaller spec file...")
         
         # Check if UPX is available
         upx_available = self._check_upx_available()
@@ -238,11 +238,11 @@ exe = EXE(
         
         # Write spec file
         self.spec_file.write_text(spec_content)
-        print(f"✅ Spec file generated: {self.spec_file}")
+        print(f"OK: Spec file generated: {self.spec_file}")
     
     def run_pyinstaller(self) -> None:
         """Run PyInstaller to build the executable"""
-        print("🔨 Building executable with PyInstaller...")
+        print("Building executable with PyInstaller...")
         
         cmd = [
             sys.executable, "-m", "PyInstaller",
@@ -261,16 +261,16 @@ exe = EXE(
         
         try:
             result = subprocess.run(cmd, check=True, capture_output=True, text=True, cwd=self.project_root)
-            print("✅ PyInstaller build completed")
+            print("OK: PyInstaller build completed")
         except subprocess.CalledProcessError as e:
-            print(f"❌ PyInstaller failed:")
+            print(f"ERROR: PyInstaller failed:")
             print(f"   STDOUT: {e.stdout}")
             print(f"   STDERR: {e.stderr}")
             raise BuildError("PyInstaller build failed")
     
     def validate_build_output(self) -> Path:
         """Validate that the executable was created successfully"""
-        print("🔍 Validating build output...")
+        print("Validating build output...")
         
         exe_path = DIST_DIR / f"{PYINSTALLER_OPTIONS['name']}.exe"
         if not exe_path.exists():
@@ -281,16 +281,16 @@ exe = EXE(
         print(f"   Executable size: {size_mb:.1f} MB")
         
         if size_mb < 1:
-            print("⚠️  Warning: Executable seems very small")
+            print("WARNING: Executable seems very small")
         elif size_mb > 200:
-            print("⚠️  Warning: Executable seems very large")
+            print("WARNING: Executable seems very large")
         
-        print(f"✅ Build output validated: {exe_path}")
+        print(f"OK: Build output validated: {exe_path}")
         return exe_path
     
     def build(self, skip_deps: bool = False) -> Path:
         """Main build process"""
-        print(f"🚀 Starting Windows build for {APP_NAME} v{self.version}")
+        print(f"Starting Windows build for {APP_NAME} v{self.version}")
         print(f"   Target: {EXE_NAME}")
         print(f"   Project root: {self.project_root}")
         print()
@@ -300,18 +300,18 @@ exe = EXE(
             if not skip_deps:
                 self.install_build_dependencies()
             else:
-                print("⏭️  Skipping dependency installation...")
+                print("Skipping dependency installation...")
             self.clean_build_directories()
             self.generate_spec_file()
             self.run_pyinstaller()
             exe_path = self.validate_build_output()
             
             print()
-            print("🎉 Build completed successfully!")
+            print("SUCCESS: Build completed successfully!")
             print(f"   Executable: {exe_path}")
             print(f"   Size: {exe_path.stat().st_size / (1024 * 1024):.1f} MB")
             print()
-            print("📋 Next steps:")
+            print("Next steps:")
             print("   1. Test the executable on your target Windows machine")
             print("   2. Check that all features work correctly")
             print("   3. Distribute the single .exe file")
@@ -319,13 +319,13 @@ exe = EXE(
             return exe_path
             
         except BuildError as e:
-            print(f"❌ Build failed: {e}")
+            print(f"ERROR: Build failed: {e}")
             sys.exit(1)
         except KeyboardInterrupt:
-            print("\\n❌ Build cancelled by user")
+            print("\nERROR: Build cancelled by user")
             sys.exit(1)
         except Exception as e:
-            print(f"❌ Unexpected error: {e}")
+            print(f"ERROR: Unexpected error: {e}")
             sys.exit(1)
 
 def main():
