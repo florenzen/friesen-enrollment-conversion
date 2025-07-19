@@ -41,7 +41,7 @@ from typing import Optional
 
 # Import our build configuration
 sys.path.insert(0, str(Path(__file__).parent))
-from build_config import *
+from windows_config import *
 
 class BuildError(Exception):
     """Custom exception for build errors"""
@@ -64,87 +64,28 @@ class WindowsBuilder:
             if response.lower() != 'y':
                 raise BuildError("Build cancelled - use Windows for best results")
         
-        # Check Python version
-        if sys.version_info < (3, 8):
-            raise BuildError("Python 3.8+ required")
-        
-        # Check if main script exists
-        if not MAIN_SCRIPT.exists():
-            raise BuildError(f"Main script not found: {MAIN_SCRIPT}")
-        
-        # Check if we're in the right directory
-        if not (self.project_root / "src").exists():
-            raise BuildError("Please run this script from the project root directory")
-        
-        # Check if runtime dependencies are installed
-        runtime_deps = ["openpyxl", "pypdf", "reportlab", "customtkinter"]
-        missing_deps = []
-        
-        for dep in runtime_deps:
-            try:
-                __import__(dep)
-            except ImportError:
-                missing_deps.append(dep)
-        
-        if missing_deps:
-            print("ERROR: Missing runtime dependencies:")
-            for dep in missing_deps:
-                print(f"   - {dep}")
-            print("\nPlease install runtime dependencies first:")
-            print("   pip install -r requirements.txt")
-            print("\nThen run the build again.")
-            raise BuildError("Runtime dependencies not installed")
-        
-        print("OK: Runtime dependencies found")
-        
-        # Test converter import specifically
-        try:
-            # Add src to path temporarily
-            original_path = sys.path.copy()
-            sys.path.insert(0, str(self.project_root / "src"))
-            from converter import Converter, ConversionError
-            sys.path = original_path  # Restore original path
-            print("OK: Converter module import successful")
-        except ImportError as e:
-            print(f"ERROR: Converter module import failed: {e}")
-            print("This might cause issues in the bundled executable.")
-        
-        # Check if form.pdf exists (optional)
-        form_pdf = self.project_root / "resources" / "form.pdf"
-        if form_pdf.exists():
-            print("OK: Form template found")
-        else:
-            print("INFO: Form template not found (optional) - basic forms will be generated")
-        
-        print("OK: Environment validation passed")
+        # Run common validation
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent / "common"))
+        from build_config import validate_environment
+        validate_environment()
     
     def install_build_dependencies(self) -> None:
         """Install build dependencies"""
-        print("Installing build dependencies...")
-        
-        requirements_file = self.build_dir / "requirements-build.txt"
-        if not requirements_file.exists():
-            raise BuildError(f"Build requirements file not found: {requirements_file}")
-        
-        try:
-            subprocess.run([
-                sys.executable, "-m", "pip", "install", "-r", str(requirements_file),
-                "--only-binary=all", "--upgrade"
-            ], check=True, capture_output=True, text=True)
-            print("OK: Build dependencies installed")
-        except subprocess.CalledProcessError as e:
-            print(f"ERROR: Failed to install dependencies: {e.stderr}")
-            raise BuildError("Dependency installation failed")
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent / "common"))
+        from build_config import install_build_dependencies
+        requirements_file = Path(__file__).parent.parent / "common" / "requirements-build.txt"
+        install_build_dependencies(requirements_file)
     
     def clean_build_directories(self) -> None:
         """Clean previous build artifacts"""
         print("Cleaning previous build artifacts...")
         
-        dirs_to_clean = [DIST_DIR, WORK_DIR, self.project_root / "build" / "temp"]
-        for dir_path in dirs_to_clean:
-            if dir_path.exists():
-                shutil.rmtree(dir_path)
-                print(f"   Removed: {dir_path}")
+        import sys
+        sys.path.insert(0, str(Path(__file__).parent.parent / "common"))
+        from build_config import clean_build_directories
+        clean_build_directories(self.build_dir, DIST_DIR, WORK_DIR)
         
         # Remove spec file if it exists (we'll regenerate it)
         if self.spec_file.exists():
@@ -186,8 +127,8 @@ class WindowsBuilder:
         console_setting = "False" if PYINSTALLER_OPTIONS["windowed"] else "True"
         
         # Create the spec file content with version info
-        from build_config import get_version_info
-        version_info = get_version_info(self.version)
+        from windows_config import get_windows_version_info
+        version_info = get_windows_version_info(self.version)
         
         spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.win32.versioninfo import (
