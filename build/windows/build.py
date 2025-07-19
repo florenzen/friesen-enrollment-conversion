@@ -190,6 +190,10 @@ class WindowsBuilder:
         version_info = get_version_info(self.version)
         
         spec_content = f'''# -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.win32.versioninfo import (
+    VSVersionInfo, FixedFileInfo, StringFileInfo, StringTable,
+    StringStruct, VarFileInfo, VarStruct
+)
 
 block_cipher = None
 
