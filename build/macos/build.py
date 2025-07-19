@@ -42,7 +42,7 @@ from typing import Optional
 # Import our build configuration
 sys.path.insert(0, str(Path(__file__).parent))
 from macos_config import (
-    PROJECT_ROOT, APP_NAME, VERSION, BUILD_DIR, BUNDLE_NAME, DMG_NAME,
+    PROJECT_ROOT, APP_NAME, VERSION, BUILD_DIR, BUNDLE_NAME,
     MACOS_PYINSTALLER_OPTIONS, MACOS_DATA_FILES, MACOS_ICON_FILE, MACOS_INFO_PLIST,
     COMMON_HIDDEN_IMPORTS, COMMON_EXCLUDES, MAIN_SCRIPT, DIST_DIR, WORK_DIR
 )
@@ -282,7 +282,9 @@ app = BUNDLE(
     
     def create_dmg(self, app_path: Path) -> Optional[Path]:
         """Create DMG file containing the app bundle"""
-        print(f"Creating DMG file: {DMG_NAME}")
+        # Use the version passed to the builder for the DMG name
+        dmg_name = f"{APP_NAME.replace(' ', '')}-{self.version}.dmg"
+        print(f"Creating DMG file: {dmg_name}")
         
         # Check if create-dmg is available
         try:
@@ -306,7 +308,7 @@ app = BUNDLE(
             os.symlink("/Applications", dmg_temp_dir / "Applications")
             
             # Create DMG
-            dmg_path = DIST_DIR / DMG_NAME
+            dmg_path = DIST_DIR / dmg_name
             cmd = [
                 "create-dmg",
                 "--volname", APP_NAME,
@@ -342,7 +344,7 @@ app = BUNDLE(
                 return dmg_path
             else:
                 # Check for temporary DMG files
-                temp_dmg_pattern = f"rw.*{DMG_NAME}"
+                temp_dmg_pattern = f"rw.*{dmg_name}"
                 temp_dmg_files = list(DIST_DIR.glob(temp_dmg_pattern))
                 if temp_dmg_files:
                     temp_dmg_path = temp_dmg_files[0]
