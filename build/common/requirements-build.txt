@@ -7,6 +7,4 @@ pyinstaller>=5.0.0
 # Additional dependencies that might be needed for the build
 # (These are already in requirements.txt but listed here for completeness)
 customtkinter>=5.2.0
-openpyxl>=3.0.0
-pypdf>=4.0.0
 reportlab>=4.0.0 

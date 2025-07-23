@@ -45,7 +45,7 @@ WORK_DIR = PROJECT_ROOT / "build" / "temp"
 COMMON_PYINSTALLER_OPTIONS = {
     "clean": True,
     "noconfirm": True,
-    "collect_all": ["openpyxl", "pypdf", "reportlab", "customtkinter"],
+    "collect_all": ["reportlab", "customtkinter"],
 }
 
 # Common hidden imports
@@ -57,16 +57,9 @@ COMMON_HIDDEN_IMPORTS = [
     "PIL",
     "PIL._tkinter_finder",
     # Our custom modules
-    "converter",
-    "src.converter",
+    "csv_converter",
+    "src.csv_converter",
     # PDF conversion dependencies
-    "openpyxl",
-    "openpyxl.workbook",
-    "openpyxl.worksheet",
-    "openpyxl.cell",
-    "pypdf",
-    "pypdf._reader",
-    "pypdf._writer",
     "reportlab",
     "reportlab.pdfgen",
     "reportlab.pdfgen.canvas",
@@ -75,7 +68,6 @@ COMMON_HIDDEN_IMPORTS = [
     "reportlab.lib.styles",
     "reportlab.platypus",
     # Additional dependencies that might be needed
-    "et_xmlfile",
     "packaging",
     "darkdetect",
 ]
@@ -96,10 +88,7 @@ def get_common_data_files():
     """Get list of common data files to include, checking if they exist"""
     data_files = []
     
-    # Include the PDF form template if it exists
-    form_pdf = PROJECT_ROOT / "resources" / "form.pdf"
-    if form_pdf.exists():
-        data_files.append((str(form_pdf), "resources"))
+    # No form.pdf needed anymore - CSV converter generates forms from scratch
     
     return data_files
 
@@ -156,7 +145,7 @@ def validate_environment():
         raise RuntimeError("Please run this script from the project root directory")
     
     # Check if runtime dependencies are installed
-    runtime_deps = ["openpyxl", "pypdf", "reportlab", "customtkinter"]
+    runtime_deps = ["reportlab", "customtkinter"]
     missing_deps = []
     
     for dep in runtime_deps:
@@ -176,24 +165,20 @@ def validate_environment():
     
     print("OK: Runtime dependencies found")
     
-    # Test converter import specifically
+    # Test csv_converter import specifically
     try:
         # Add src to path temporarily
         original_path = sys.path.copy()
         sys.path.insert(0, str(PROJECT_ROOT / "src"))
-        from converter import Converter, ConversionError
+        from csv_converter import convert_csv_to_pdf
         sys.path = original_path  # Restore original path
-        print("OK: Converter module import successful")
+        print("OK: CSV converter module import successful")
     except ImportError as e:
-        print(f"ERROR: Converter module import failed: {e}")
+        print(f"ERROR: CSV converter module import failed: {e}")
         print("This might cause issues in the bundled executable.")
     
-    # Check if form.pdf exists (optional)
-    form_pdf = PROJECT_ROOT / "resources" / "form.pdf"
-    if form_pdf.exists():
-        print("OK: Form template found")
-    else:
-        print("INFO: Form template not found (optional) - basic forms will be generated")
+    # No form.pdf needed anymore - CSV converter generates forms from scratch
+    print("INFO: Using CSV converter - forms will be generated from scratch")
     
     print("OK: Environment validation passed")
 
