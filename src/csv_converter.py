@@ -438,7 +438,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
             discount = ''
         if discount == 'ja':
             # Calculate position of "O" in the first line (more precise)
-            o_position = right_x
+            o_position = right_x + 1
             c.drawString(o_position, line1_y, "X")
         
         # Add address row below the discount box
