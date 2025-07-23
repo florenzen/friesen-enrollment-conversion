@@ -97,20 +97,18 @@ def read_csv_to_dicts(filename: str) -> List[Dict[str, Any]]:
         raise Exception(f"Error reading CSV file '{filename}': {e}")
 
 
-def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> None:
+def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
     """
     Generate a one-page PDF from a dictionary row with specific formatting.
     
     Args:
         data_dict (Dict[str, Any]): Dictionary containing the row data
-        output_filename (str): Path where the PDF should be saved
+        c (canvas.Canvas): Canvas object to draw on
         
     Raises:
         Exception: If there's an error creating the PDF
     """
     try:
-        # Create canvas for PDF
-        c = canvas.Canvas(output_filename, pagesize=A4)
         
         # Define a very light grey color (95% white, 5% black)
         light_grey = Color(0.95, 0.95, 0.95)
@@ -282,7 +280,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         c.setFillColor(black)
         
         # Get gender value from data
-        sex = data_dict.get('sex', '').lower()
+        sex = data_dict.get('sex', '')
+        if sex is not None:
+            sex = sex.lower()
+        else:
+            sex = ''
         
         # Create gender selection text with checkboxes
         gender_text = "Geschlecht: "
@@ -397,7 +399,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
             draw_text_in_box(family_member, family_box_x, line3_y+1, family_box_width, padding=2)
         
         # Overprint "X" on "O" if discount is "ja"
-        discount = data_dict.get('discount', '').lower()
+        discount = data_dict.get('discount', '')
+        if discount is not None:
+            discount = discount.lower()
+        else:
+            discount = ''
         if discount == 'ja':
             # Calculate position of "O" in the first line (more precise)
             o_position = right_x
@@ -503,7 +509,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         c.setFillColor(black)
         
         # Get applicant gender value from data
-        applicant_sex = data_dict.get('applicant_sex', '').lower()
+        applicant_sex = data_dict.get('applicant_sex', '')
+        if applicant_sex is not None:
+            applicant_sex = applicant_sex.lower()
+        else:
+            applicant_sex = ''
         
         # Create gender selection text with checkboxes
         guardian_gender_text = "Geschlecht: O weiblich / O männlich / O divers"
@@ -668,15 +678,13 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         bic = data_dict.get('bic', '')
         draw_text_in_box(bic, x + 10 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic_box_width, padding=5)
         
-        c.save()
-        
     except Exception as e:
-        raise Exception(f"Error creating PDF '{output_filename}': {e}")
+        raise Exception(f"Error creating PDF page: {e}")
 
 
 def convert(csv_path: str, pdf_path: str) -> None:
     """
-    Read a CSV file and convert the first row to a PDF.
+    Read a CSV file and convert all rows to a multi-page PDF.
     
     Args:
         csv_path (str): Path to the input CSV file
@@ -692,13 +700,22 @@ def convert(csv_path: str, pdf_path: str) -> None:
         if not data_list:
             raise Exception("CSV file contains no data rows")
         
-        # Get the first row (already converted)
-        first_row = data_list[0]
+        # Create canvas for multi-page PDF
+        c = canvas.Canvas(pdf_path, pagesize=A4)
         
-        # Generate the PDF
-        generate_pdf_from_dict(first_row, pdf_path)
+        # Process each row
+        for i, row in enumerate(data_list):
+            # Generate PDF page for this row
+            generate_pdf_from_dict(row, c)
+            
+            # Add a new page if this isn't the last row
+            if i < len(data_list) - 1:
+                c.showPage()
         
-        print(f"✅ Successfully converted first row from '{csv_path}' to '{pdf_path}'")
+        # Save the PDF
+        c.save()
+        
+        print(f"✅ Successfully converted {len(data_list)} rows from '{csv_path}' to '{pdf_path}'")
         
     except Exception as e:
         raise Exception(f"Error in conversion process: {e}")
