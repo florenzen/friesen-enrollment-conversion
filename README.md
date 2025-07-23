@@ -31,56 +31,6 @@ Run the Friesen Enrollment Converter application:
 python src/main.py
 ```
 
-### Features
-
-- **Modern GUI**: Built with CustomTkinter for a clean, modern appearance
-- **Open table**: Click to select an Excel enrollment file (.xlsx or .xls) using a native file dialog
-- **File path display**: Shows the path of the currently selected file in a read-only field
-- **Convert to PDF**: Converts Excel enrollment data to a multi-page PDF with filled forms (one page per enrollment record)
-- **Status updates**: Real-time feedback with color-coded status messages
-- **Cross-platform**: Works on Windows, macOS, and Linux
-
-### Interface
-
-The application features a dark theme with:
-- Rounded corners and modern styling
-- Intuitive layout with clearly separated sections
-- Disabled/enabled button states for better UX
-- Success/error message dialogs
-- Responsive design that adapts to window resizing
-
-### Technical Details
-
-- **GUI Framework**: CustomTkinter (modern tkinter alternative)
-- **File Handling**: Native system file dialogs
-- **Error Handling**: Comprehensive error handling with user feedback
-- **Architecture**: Object-oriented design for maintainability
-
-## Excel File Format
-
-The application expects Excel files with the following columns:
-- **Nachname** (required): Last name
-- **Vorname** (required): First name  
-- **Geburtsdatum** (optional): Date of birth
-- **Kurs** (optional): Course/class information
-
-> **✅ Lightweight Design**: Uses `openpyxl` for Excel reading instead of heavy pandas - much faster builds and smaller executables!
-
-## PDF Form Template
-
-You can optionally provide a custom PDF form template:
-
-### **Option 1: Use Your Own Template**
-Place your custom PDF form at `resources/form.pdf`. The converter will use this template and fill in the data.
-
-### **Option 2: Auto-Generated Forms**
-If no template is provided, the application will automatically generate basic enrollment forms.
-
-### **Template Integration**
-- The form template is automatically bundled with the Windows executable
-- Fields are mapped to Excel columns: `Nachname`, `Vorname`, `Geburtsdatum`, `Kurs`
-- Template is optional - the app works with or without it
-
 ## Building Windows Executable
 
 To create a standalone Windows executable (.exe file):
@@ -101,7 +51,6 @@ To create a standalone Windows executable (.exe file):
    pip install -r requirements.txt
    ```
    This installs: `openpyxl`, `pypdf`, `reportlab`, `customtkinter`
-
 
 
 3. **Run the build script:**
