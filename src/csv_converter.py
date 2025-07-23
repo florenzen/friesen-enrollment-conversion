@@ -771,7 +771,22 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
                         converted_row[mapped_key] = row.get(original_key, '')
                 data[i] = converted_row
             
-            return data
+            # Filter out empty or whitespace-only rows
+            filtered_data = []
+            for row in data:
+                # Check if any field has non-empty, non-whitespace content
+                has_content = False
+                for value in row.values():
+                    if value and str(value).strip():
+                        has_content = True
+                        break
+                
+                if has_content:
+                    filtered_data.append(row)
+            
+            print(f"📊 Filtered {len(data) - len(filtered_data)} empty/whitespace rows from {len(data)} total rows")
+            
+            return filtered_data
             
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
