@@ -68,6 +68,12 @@ key_mapping = {
     'BIC': 'bic'
 }
 
+# Create reverse mapping for debug labels (mapped_key -> original_key)
+reverse_key_mapping = {}
+for original_key, mapped_key in key_mapping.items():
+    if mapped_key is not None:
+        reverse_key_mapping[mapped_key] = original_key
+
 def read_csv_to_dicts(filename: str) -> List[Dict[str, Any]]:
     """
     Read a CSV file with Windows 1252 encoding and semicolon separators,
@@ -97,13 +103,14 @@ def read_csv_to_dicts(filename: str) -> List[Dict[str, Any]]:
         raise Exception(f"Error reading CSV file '{filename}': {e}")
 
 
-def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
+def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: bool = False) -> None:
     """
     Generate a one-page PDF from a dictionary row with specific formatting.
     
     Args:
         data_dict (Dict[str, Any]): Dictionary containing the row data
         c (canvas.Canvas): Canvas object to draw on
+        debug (bool): If True, show source keys as labels in top-right corner of fields
         
     Raises:
         Exception: If there's an error creating the PDF
@@ -113,7 +120,26 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         # Define a very light grey color (95% white, 5% black)
         light_grey = Color(0.95, 0.95, 0.95)
         
-        def draw_text_in_box(text, x, y, box_width, font_name="Helvetica", base_font_size=12, padding=5):
+        def draw_debug_label(original_key: str, x: float, y: float, box_width: float, box_height: float) -> None:
+            """Draw debug label in top-right corner of a field"""
+            if not debug or original_key in ['sex', 'applicant_sex']:  # Skip sex fields
+                return
+            
+            # Set red color and small font
+            c.setFillColor(Color(1, 0, 0))  # Red
+            c.setFont("Helvetica", 6)
+            
+            # Position in top-right corner with small margin
+            label_x = x + box_width - 2
+            label_y = y + 2  # Small margin from top
+            
+            # Draw the label
+            c.drawRightString(label_x, label_y, original_key)
+            
+            # Reset to black color
+            c.setFillColor(black)
+        
+        def draw_text_in_box(text, x, y, box_width, font_name="Helvetica", base_font_size=12, padding=5, field_key=None):
             """
             Draw text in a box with automatic font size reduction if needed.
             
@@ -124,10 +150,8 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
                 font_name: Font family name
                 base_font_size: Starting font size
                 padding: Padding from box edges
+                field_key: Key for debug label (optional)
             """
-            if not text:
-                return
-            
             # Calculate available width for text
             available_width = box_width - (2 * padding)
             
@@ -142,8 +166,16 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
                     break
                 font_size -= 1
             
-            # Draw the text
-            c.drawString(x + padding, y, text)
+            # Draw the text if it exists
+            if text:
+                c.drawString(x + padding, y, text)
+            
+            # Draw debug label if field_key is provided (always show, even if no data)
+            if field_key and field_key in reverse_key_mapping:
+                original_key = reverse_key_mapping[field_key]
+                # Estimate box height based on font size
+                box_height = font_size + 8  # Approximate height
+                draw_debug_label(original_key, x, y, box_width, box_height)
         
         # Set margins
         margin_top = 1.5 * cm
@@ -344,11 +376,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         last_name = data_dict.get('last_name', '')
         first_name = data_dict.get('first_name', '')
         name_text = f"{last_name}, {first_name}" if last_name and first_name else f"{last_name}{first_name}"
-        draw_text_in_box(name_text, x + inner_margin, inner_y - (inner_box_height / 2) - 4, left_box_width)
+        draw_text_in_box(name_text, x + inner_margin, inner_y - (inner_box_height / 2) - 4, left_box_width, field_key='last_name')
         
         # Right box: birth_date
         birth_date = data_dict.get('birth_date', '')
-        draw_text_in_box(birth_date, x + inner_margin + left_box_width + box_gap, inner_y - (inner_box_height / 2) - 4, right_box_width)
+        draw_text_in_box(birth_date, x + inner_margin + left_box_width + box_gap, inner_y - (inner_box_height / 2) - 4, right_box_width, field_key='birth_date')
         
         # Add another box below the name/birth date boxes
         discount_y = inner_y - inner_box_height - 10  # Position below the previous boxes with 10pt gap
@@ -396,7 +428,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
             c.setFillColor(black)  # Reset to black for text
             
             # Add family member text inside the box (same baseline as "Diese sind")
-            draw_text_in_box(family_member, family_box_x, line3_y+1, family_box_width, padding=2)
+            draw_text_in_box(family_member, family_box_x, line3_y+1, family_box_width, padding=2, field_key='family_member')
         
         # Overprint "X" on "O" if discount is "ja"
         discount = data_dict.get('discount', '')
@@ -437,15 +469,15 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         
         # First box: street
         street = data_dict.get('street', '')
-        draw_text_in_box(street, x + inner_margin, address_y - (address_box_height / 2) - 4, address_box1_width)
+        draw_text_in_box(street, x + inner_margin, address_y - (address_box_height / 2) - 4, address_box1_width, field_key='street')
         
         # Second box: zip
         zip_code = data_dict.get('zip', '')
-        draw_text_in_box(zip_code, x + inner_margin + address_box1_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box2_width)
+        draw_text_in_box(zip_code, x + inner_margin + address_box1_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box2_width, field_key='zip')
         
         # Third box: city
         city = data_dict.get('city', '')
-        draw_text_in_box(city, x + inner_margin + address_box1_width + address_box_gap + address_box2_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box3_width)
+        draw_text_in_box(city, x + inner_margin + address_box1_width + address_box_gap + address_box2_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box3_width, field_key='city')
         
         # Add contact information row below the address boxes
         contact_y = address_y - address_box_height - 10  # Position below address boxes with 10pt gap
@@ -478,15 +510,15 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         
         # First box: email
         email = data_dict.get('email', '')
-        draw_text_in_box(email, x + inner_margin, contact_y - (contact_box_height / 2) - 4, email_box_width)
+        draw_text_in_box(email, x + inner_margin, contact_y - (contact_box_height / 2) - 4, email_box_width, field_key='email')
         
         # Second box: phone
         phone = data_dict.get('phone', '')
-        draw_text_in_box(phone, x + inner_margin + email_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, phone_box_width)
+        draw_text_in_box(phone, x + inner_margin + email_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, phone_box_width, field_key='phone')
         
         # Third box: profession
         profession = data_dict.get('profession', '')
-        draw_text_in_box(profession, x + inner_margin + email_box_width + contact_box_gap + phone_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, profession_box_width)
+        draw_text_in_box(profession, x + inner_margin + email_box_width + contact_box_gap + phone_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, profession_box_width, field_key='profession')
         
         # Start a new outer box for legal guardian information
         guardian_y = contact_y - contact_box_height - 30  # Position below contact boxes with 30pt gap (reduced from 50pt)
@@ -560,7 +592,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         applicant_last_name = data_dict.get('applicant_last_name', '')
         applicant_first_name = data_dict.get('applicant_first_name', '')
         applicant_name_text = f"{applicant_last_name}, {applicant_first_name}" if applicant_last_name and applicant_first_name else f"{applicant_last_name}{applicant_first_name}"
-        draw_text_in_box(applicant_name_text, x + 10, applicant_name_y - (applicant_name_box_height / 2) - 4, applicant_name_box_width, padding=5)
+        draw_text_in_box(applicant_name_text, x + 10, applicant_name_y - (applicant_name_box_height / 2) - 4, applicant_name_box_width, padding=5, field_key='applicant_last_name')
         
         # Add applicant address row (same layout as member address)
         applicant_address_y = applicant_name_y - applicant_name_box_height - 10  # Position below name box
@@ -590,15 +622,15 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         
         # First box: applicant_street
         applicant_street = data_dict.get('applicant_street', '')
-        draw_text_in_box(applicant_street, x + 10, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box1_width, padding=5)
+        draw_text_in_box(applicant_street, x + 10, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box1_width, padding=5, field_key='applicant_street')
         
         # Second box: applicant_zip
         applicant_zip = data_dict.get('applicant_zip', '')
-        draw_text_in_box(applicant_zip, x + 10 + applicant_address_box1_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box2_width, padding=5)
+        draw_text_in_box(applicant_zip, x + 10 + applicant_address_box1_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box2_width, padding=5, field_key='applicant_zip')
         
         # Third box: applicant_city
         applicant_city = data_dict.get('applicant_city', '')
-        draw_text_in_box(applicant_city, x + 10 + applicant_address_box1_width + applicant_address_box_gap + applicant_address_box2_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box3_width, padding=5)
+        draw_text_in_box(applicant_city, x + 10 + applicant_address_box1_width + applicant_address_box_gap + applicant_address_box2_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box3_width, padding=5, field_key='applicant_city')
         
         # Add section header for SEPA mandate
         sepa_y = applicant_address_y - applicant_address_box_height - 50  # Position below guardian box with 50pt gap (increased from 30pt)
@@ -642,7 +674,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         
         # Add content in 12pt font, left-aligned, baseline in middle of box
         account_holder = data_dict.get('account_holder', '')
-        draw_text_in_box(account_holder, x + inner_margin, account_holder_y - (account_holder_box_height / 2) - 4, account_holder_box_width)
+        draw_text_in_box(account_holder, x + inner_margin, account_holder_y - (account_holder_box_height / 2) - 4, account_holder_box_width, field_key='account_holder')
         
         # Second row: IBAN and BIC (2/3 and 1/3 width)
         iban_bic_y = account_holder_y - account_holder_box_height - 10  # Position below account holder box
@@ -672,23 +704,24 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         if iban:
             # Format IBAN in groups of 4 characters with spaces
             formatted_iban = ' '.join([iban[i:i+4] for i in range(0, len(iban), 4)])
-            draw_text_in_box(formatted_iban, x + 10, iban_bic_y - (iban_bic_box_height / 2) - 4, iban_box_width, padding=5)
+            draw_text_in_box(formatted_iban, x + 10, iban_bic_y - (iban_bic_box_height / 2) - 4, iban_box_width, padding=5, field_key='iban')
         
         # BIC box
         bic = data_dict.get('bic', '')
-        draw_text_in_box(bic, x + 10 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic_box_width, padding=5)
+        draw_text_in_box(bic, x + 10 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic_box_width, padding=5, field_key='bic')
         
     except Exception as e:
         raise Exception(f"Error creating PDF page: {e}")
 
 
-def convert_csv_to_pdf(csv_path: str, pdf_path: str) -> None:
+def convert_csv_to_pdf(csv_path: str, pdf_path: str, debug: bool = False) -> None:
     """
     Read a CSV file and convert all rows to a multi-page PDF.
     
     Args:
         csv_path (str): Path to the input CSV file
         pdf_path (str): Path where the output PDF should be saved
+        debug (bool): If True, show source keys as labels in top-right corner of fields
         
     Raises:
         Exception: If there's an error reading the CSV or creating the PDF
@@ -706,7 +739,7 @@ def convert_csv_to_pdf(csv_path: str, pdf_path: str) -> None:
         # Process each row
         for i, row in enumerate(data_list):
             # Generate PDF page for this row
-            generate_pdf_from_dict(row, c)
+            generate_pdf_from_dict(row, c, debug)
             
             # Add a new page if this isn't the last row
             if i < len(data_list) - 1:
@@ -798,16 +831,18 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
 
 def main():
     """Main function to handle command line arguments"""
-    if len(sys.argv) != 3:
-        print("Usage: python csv_converter.py <input_csv_path> <output_pdf_path>")
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print("Usage: python csv_converter.py <input_csv_path> <output_pdf_path> [--no-debug]")
         print("Example: python csv_converter.py enrollments.csv output.pdf")
+        print("Example: python csv_converter.py enrollments.csv output.pdf --no-debug")
         sys.exit(1)
     
     csv_path = sys.argv[1]
     pdf_path = sys.argv[2]
+    debug = True if len(sys.argv) == 3 or sys.argv[3] != "--no-debug" else False
     
     try:
-        convert_csv_to_pdf(csv_path, pdf_path)
+        convert_csv_to_pdf(csv_path, pdf_path, debug)
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)

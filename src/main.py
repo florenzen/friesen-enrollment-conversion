@@ -56,6 +56,9 @@ class FriesenEnrollmentConverterApp:
         self.selected_file_path = ""
         self.save_file_path = ""
         
+        # Debug mode variable
+        self.debug_mode = tk.BooleanVar(value=False)  # Default to False (deselected)
+        
         self.create_widgets()
         
         # Set size after widgets are created to ensure everything fits
@@ -167,8 +170,12 @@ class FriesenEnrollmentConverterApp:
         )
         convert_label.pack(pady=(20, 15))
         
+        # Convert button and debug checkbox row
+        convert_row = ctk.CTkFrame(convert_frame)
+        convert_row.pack(pady=(0, 20))
+        
         self.convert_button = ctk.CTkButton(
-            convert_frame,
+            convert_row,
             text="Convert",
             command=self.convert_file,
             width=150,
@@ -176,7 +183,27 @@ class FriesenEnrollmentConverterApp:
             font=ctk.CTkFont(size=14, weight="bold"),
             state="disabled"  # Disabled until file is selected
         )
-        self.convert_button.pack(pady=(0, 20))
+        self.convert_button.pack(side="left", padx=(0, 20))
+        
+        # Debug checkbox
+        self.debug_checkbox = ctk.CTkCheckBox(
+            convert_row,
+            text="Debug",
+            variable=self.debug_mode,
+            font=ctk.CTkFont(size=12),
+            checkbox_width=20,
+            checkbox_height=20
+        )
+        self.debug_checkbox.pack(side="left", padx=(0, 0))
+        
+        # Debug help text
+        debug_help = ctk.CTkLabel(
+            convert_frame,
+            text="Debug: Shows CSV column names as red labels in fields",
+            font=ctk.CTkFont(size=10),
+            text_color="#888888"
+        )
+        debug_help.pack(pady=(0, 0))
         
         # Status section
         status_frame = ctk.CTkFrame(main_frame)
@@ -270,7 +297,7 @@ class FriesenEnrollmentConverterApp:
                     self.root.update()  # Update UI during conversion
                 
                 # Perform the conversion
-                convert_csv_to_pdf(self.selected_file_path, filename)
+                convert_csv_to_pdf(self.selected_file_path, filename, debug=self.debug_mode.get())
                 
                 self.save_file_path = filename
                 self.update_status(f"CSV successfully converted to PDF: {Path(filename).name}", "#00ff00")
