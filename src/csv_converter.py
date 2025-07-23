@@ -10,7 +10,7 @@ import csv
 import sys
 from typing import List, Dict, Any
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.units import cm
+from reportlab.lib.units import cm, mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
@@ -115,6 +115,38 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         # Define a very light grey color (95% white, 5% black)
         light_grey = Color(0.95, 0.95, 0.95)
         
+        def draw_text_in_box(text, x, y, box_width, font_name="Helvetica", base_font_size=12, padding=5):
+            """
+            Draw text in a box with automatic font size reduction if needed.
+            
+            Args:
+                text: Text to draw
+                x, y: Position coordinates
+                box_width: Width of the box
+                font_name: Font family name
+                base_font_size: Starting font size
+                padding: Padding from box edges
+            """
+            if not text:
+                return
+            
+            # Calculate available width for text
+            available_width = box_width - (2 * padding)
+            
+            # Start with base font size
+            font_size = base_font_size
+            
+            # Reduce font size until text fits
+            while font_size > 6:  # Minimum font size of 6pt
+                c.setFont(font_name, font_size)
+                text_width = c.stringWidth(text, font_name, font_size)
+                if text_width <= available_width:
+                    break
+                font_size -= 1
+            
+            # Draw the text
+            c.drawString(x + padding, y, text)
+        
         # Set margins
         margin_top = 1.5 * cm
         margin_bottom = 1.5 * cm
@@ -132,7 +164,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         # Main title - centered, bold, 20pt
         c.setFont("Helvetica-Bold", 20)
         c.setFillColor(black)
-        title_text = "Berliner Schwimmverein \"Friesen 1895\" e. V."
+        title_text = "Berliner Schwimmverein „Friesen 1895“ e. V."
         title_width = c.stringWidth(title_text, "Helvetica-Bold", 20)
         c.drawString((A4[0] - title_width) / 2, y, title_text)
         
@@ -141,12 +173,87 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         
         # Subtitle - centered, bold, 14pt
         c.setFont("Helvetica-Bold", 14)
-        subtitle_text = "Aufnahmeantrag"
+        subtitle_text = "Aufnahmeantrag (konvertiert)"
         subtitle_width = c.stringWidth(subtitle_text, "Helvetica-Bold", 14)
         c.drawString((A4[0] - subtitle_width) / 2, y, subtitle_text)
         
-        # Move down for section heading
-        y -= 30
+        # Add three boxes at the top
+        # Calculate box dimensions
+        top_box_width = 4 * cm
+        top_box_height = 1.2 * cm  # Same height as other grey boxes
+        top_box_gap = 1 * mm  # 1mm gap between boxes
+        
+        # Calculate positions aligned with left margin
+        # First box: "Unterrichtsziel" - aligned with left margin
+        unterrichtszie_x = x  # Align with left margin
+        unterrichtszie_y = y + 5  # Slightly above subtitle baseline
+        
+        # Draw first box with light grey fill
+        c.setFillColor(light_grey)
+        c.rect(unterrichtszie_x, unterrichtszie_y - top_box_height, top_box_width, top_box_height, fill=1)
+        c.setFillColor(black)  # Reset to black for text
+        
+        # Add label for first box
+        c.setFont("Helvetica", 8)
+        c.drawString(unterrichtszie_x + 2, unterrichtszie_y - top_box_height + 2, "Unterrichtsziel")
+        
+        # Second box: "von" - below first box
+        von_x = unterrichtszie_x
+        von_y = unterrichtszie_y - top_box_height - top_box_gap
+        
+        # Draw second box with light grey fill
+        c.setFillColor(light_grey)
+        c.rect(von_x, von_y - top_box_height, top_box_width, top_box_height, fill=1)
+        c.setFillColor(black)  # Reset to black for text
+        
+        # Add label for second box
+        c.setFont("Helvetica", 8)
+        c.drawString(von_x + 2, von_y - top_box_height + 2, "von")
+        
+        # Third box: "bis" - right of second box
+        bis_x = von_x + top_box_width + top_box_gap
+        bis_y = von_y  # Same y position as second box
+        
+        # Draw third box with light grey fill
+        c.setFillColor(light_grey)
+        c.rect(bis_x, bis_y - top_box_height, top_box_width, top_box_height, fill=1)
+        c.setFillColor(black)  # Reset to black for text
+        
+        # Add label for third box
+        c.setFont("Helvetica", 8)
+        c.drawString(bis_x + 2, bis_y - top_box_height + 2, "bis")
+        
+        # Fourth box: "Mitgliedsnummer" - at right margin, same height as "Unterrichtsziel"
+        mitgliedsnummer_x = x + usable_width - top_box_width  # Right margin minus box width
+        mitgliedsnummer_y = unterrichtszie_y  # Same height as "Unterrichtsziel"
+        
+        # Draw fourth box with light grey fill
+        c.setFillColor(light_grey)
+        c.rect(mitgliedsnummer_x, mitgliedsnummer_y - top_box_height, top_box_width, top_box_height, fill=1)
+        c.setFillColor(black)  # Reset to black for text
+        
+        # Add label for fourth box
+        c.setFont("Helvetica", 8)
+        c.drawString(mitgliedsnummer_x + 2, mitgliedsnummer_y - top_box_height + 2, "Mitgliedsnummer")
+        
+        # Fifth box: "Zahlernummer" - below fourth box
+        zahlernummer_x = mitgliedsnummer_x  # Same x position as fourth box
+        zahlernummer_y = mitgliedsnummer_y - top_box_height - top_box_gap  # 1mm gap below
+        
+        # Draw fifth box with light grey fill
+        c.setFillColor(light_grey)
+        c.rect(zahlernummer_x, zahlernummer_y - top_box_height, top_box_width, top_box_height, fill=1)
+        c.setFillColor(black)  # Reset to black for text
+        
+        # Add label for fifth box
+        c.setFont("Helvetica", 8)
+        c.drawString(zahlernummer_x + 2, zahlernummer_y - top_box_height + 2, "Zahlernummer")
+        
+        # Shift everything down by 2cm after subtitle
+        y -= 2 * cm
+        
+        # Move down for section heading (increased space before)
+        y -= 50
         
         # Section heading - bold, 12pt, underlined
         c.setFont("Helvetica-Bold", 12)
@@ -157,8 +264,8 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         text_width = c.stringWidth(section_text, "Helvetica-Bold", 12)
         c.line(x, y - 2, x + text_width, y - 2)
         
-        # Move down for the box
-        y -= 30
+        # Move down for the box (reduced space after)
+        y -= 10
         
         # Draw the enlarged main box (now with bottom line to close it)
         c.setStrokeColor(black)
@@ -235,11 +342,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         last_name = data_dict.get('last_name', '')
         first_name = data_dict.get('first_name', '')
         name_text = f"{last_name}, {first_name}" if last_name and first_name else f"{last_name}{first_name}"
-        c.drawString(x + inner_margin + 5, inner_y - (inner_box_height / 2) - 4, name_text)  # -4 for baseline adjustment
+        draw_text_in_box(name_text, x + inner_margin, inner_y - (inner_box_height / 2) - 4, left_box_width)
         
         # Right box: birth_date
         birth_date = data_dict.get('birth_date', '')
-        c.drawString(x + inner_margin + left_box_width + box_gap + 5, inner_y - (inner_box_height / 2) - 4, birth_date)  # -4 for baseline adjustment
+        draw_text_in_box(birth_date, x + inner_margin + left_box_width + box_gap, inner_y - (inner_box_height / 2) - 4, right_box_width)
         
         # Add another box below the name/birth date boxes
         discount_y = inner_y - inner_box_height - 10  # Position below the previous boxes with 10pt gap
@@ -279,7 +386,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
             # Calculate position for family member box
             family_box_x = right_x + c.stringWidth(right_text_line3, "Helvetica", 10) + 5
             family_box_width = (x + inner_margin + inner_width) - family_box_x - 5  # Fixed width extending to right edge minus 5
-            family_box_height = 12  # Reduced height by 6pt (from 18 to 12)
+            family_box_height = 14  # Reduced height by 6pt (from 18 to 12)
             
             # Draw the box around family member text (shifted up 9pt total, extends above and below baseline)
             c.setFillColor(light_grey)
@@ -287,7 +394,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
             c.setFillColor(black)  # Reset to black for text
             
             # Add family member text inside the box (same baseline as "Diese sind")
-            c.drawString(family_box_x + 2, line3_y, family_member)
+            draw_text_in_box(family_member, family_box_x, line3_y+1, family_box_width, padding=2)
         
         # Overprint "X" on "O" if discount is "ja"
         discount = data_dict.get('discount', '').lower()
@@ -324,54 +431,59 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         
         # First box: street
         street = data_dict.get('street', '')
-        c.drawString(x + inner_margin + 5, address_y - (address_box_height / 2) - 4, street)
+        draw_text_in_box(street, x + inner_margin, address_y - (address_box_height / 2) - 4, address_box1_width)
         
         # Second box: zip
         zip_code = data_dict.get('zip', '')
-        c.drawString(x + inner_margin + address_box1_width + address_box_gap + 5, address_y - (address_box_height / 2) - 4, zip_code)
+        draw_text_in_box(zip_code, x + inner_margin + address_box1_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box2_width)
         
         # Third box: city
         city = data_dict.get('city', '')
-        c.drawString(x + inner_margin + address_box1_width + address_box_gap + address_box2_width + address_box_gap + 5, address_y - (address_box_height / 2) - 4, city)
+        draw_text_in_box(city, x + inner_margin + address_box1_width + address_box_gap + address_box2_width + address_box_gap, address_y - (address_box_height / 2) - 4, address_box3_width)
         
         # Add contact information row below the address boxes
         contact_y = address_y - address_box_height - 10  # Position below address boxes with 10pt gap
         
-        # Calculate dimensions for contact boxes (equal width)
+        # Calculate dimensions for contact boxes (email wider, phone smaller)
         contact_box_height = 1.2 * cm
         contact_box_gap = 5  # Gap between contact boxes
-        contact_box_width = (inner_width / 3) - (2 * contact_box_gap / 3)  # 1/3 each minus gap
+        base_contact_box_width = (inner_width / 3) - (2 * contact_box_gap / 3)  # Base 1/3 width minus gap
+        
+        # Adjust widths: email +1cm, phone -1cm from left
+        email_box_width = base_contact_box_width + 1 * cm
+        phone_box_width = base_contact_box_width - 1 * cm
+        profession_box_width = base_contact_box_width  # Keep profession box unchanged
         
         # Draw the three contact boxes with light grey fill
         c.setFillColor(light_grey)
-        c.rect(x + inner_margin, contact_y - contact_box_height, contact_box_width, contact_box_height, fill=1)  # Email
-        c.rect(x + inner_margin + contact_box_width + contact_box_gap, contact_y - contact_box_height, contact_box_width, contact_box_height, fill=1)  # Phone
-        c.rect(x + inner_margin + 2 * contact_box_width + 2 * contact_box_gap, contact_y - contact_box_height, contact_box_width, contact_box_height, fill=1)  # Profession
+        c.rect(x + inner_margin, contact_y - contact_box_height, email_box_width, contact_box_height, fill=1)  # Email
+        c.rect(x + inner_margin + email_box_width + contact_box_gap, contact_y - contact_box_height, phone_box_width, contact_box_height, fill=1)  # Phone
+        c.rect(x + inner_margin + email_box_width + contact_box_gap + phone_box_width + contact_box_gap, contact_y - contact_box_height, profession_box_width, contact_box_height, fill=1)  # Profession
         c.setFillColor(black)  # Reset to black for text
         
         # Add labels in 8pt font in lower left corner of each box
         c.setFont("Helvetica", 8)
         c.drawString(x + inner_margin + 2, contact_y - contact_box_height + 2, "E-Mail")
-        c.drawString(x + inner_margin + contact_box_width + contact_box_gap + 2, contact_y - contact_box_height + 2, "Telefon / Mobil")
-        c.drawString(x + inner_margin + 2 * contact_box_width + 2 * contact_box_gap + 2, contact_y - contact_box_height + 2, "Beruf")
+        c.drawString(x + inner_margin + email_box_width + contact_box_gap + 2, contact_y - contact_box_height + 2, "Telefon / Mobil")
+        c.drawString(x + inner_margin + email_box_width + contact_box_gap + phone_box_width + contact_box_gap + 2, contact_y - contact_box_height + 2, "Beruf")
         
         # Add content in 12pt font, left-aligned, baseline in middle of boxes
         c.setFont("Helvetica", 12)
         
         # First box: email
         email = data_dict.get('email', '')
-        c.drawString(x + inner_margin + 5, contact_y - (contact_box_height / 2) - 4, email)
+        draw_text_in_box(email, x + inner_margin, contact_y - (contact_box_height / 2) - 4, email_box_width)
         
         # Second box: phone
         phone = data_dict.get('phone', '')
-        c.drawString(x + inner_margin + contact_box_width + contact_box_gap + 5, contact_y - (contact_box_height / 2) - 4, phone)
+        draw_text_in_box(phone, x + inner_margin + email_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, phone_box_width)
         
         # Third box: profession
         profession = data_dict.get('profession', '')
-        c.drawString(x + inner_margin + 2 * contact_box_width + 2 * contact_box_gap + 5, contact_y - (contact_box_height / 2) - 4, profession)
+        draw_text_in_box(profession, x + inner_margin + email_box_width + contact_box_gap + phone_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, profession_box_width)
         
         # Start a new outer box for legal guardian information
-        guardian_y = contact_y - contact_box_height - 50  # Position below contact boxes with 50pt gap (increased from 30pt)
+        guardian_y = contact_y - contact_box_height - 30  # Position below contact boxes with 30pt gap (reduced from 50pt)
         
         # Calculate dimensions for the guardian box
         guardian_box_height = 160  # Enlarged height to accommodate all content and extend to bottom
@@ -435,11 +547,10 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         c.drawString(x + 12, applicant_name_y - applicant_name_box_height + 2, "Name, Vorname (gesetzl. Vertreter)")
         
         # Add content in 12pt font, left-aligned, baseline in middle of box
-        c.setFont("Helvetica", 12)
         applicant_last_name = data_dict.get('applicant_last_name', '')
         applicant_first_name = data_dict.get('applicant_first_name', '')
         applicant_name_text = f"{applicant_last_name}, {applicant_first_name}" if applicant_last_name and applicant_first_name else f"{applicant_last_name}{applicant_first_name}"
-        c.drawString(x + 15, applicant_name_y - (applicant_name_box_height / 2) - 4, applicant_name_text)
+        draw_text_in_box(applicant_name_text, x + 10, applicant_name_y - (applicant_name_box_height / 2) - 4, applicant_name_box_width, padding=5)
         
         # Add applicant address row (same layout as member address)
         applicant_address_y = applicant_name_y - applicant_name_box_height - 10  # Position below name box
@@ -469,18 +580,18 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         
         # First box: applicant_street
         applicant_street = data_dict.get('applicant_street', '')
-        c.drawString(x + 15, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_street)
+        draw_text_in_box(applicant_street, x + 10, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box1_width, padding=5)
         
         # Second box: applicant_zip
         applicant_zip = data_dict.get('applicant_zip', '')
-        c.drawString(x + 15 + applicant_address_box1_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_zip)
+        draw_text_in_box(applicant_zip, x + 10 + applicant_address_box1_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box2_width, padding=5)
         
         # Third box: applicant_city
         applicant_city = data_dict.get('applicant_city', '')
-        c.drawString(x + 15 + applicant_address_box1_width + applicant_address_box_gap + applicant_address_box2_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_city)
+        draw_text_in_box(applicant_city, x + 10 + applicant_address_box1_width + applicant_address_box_gap + applicant_address_box2_width + applicant_address_box_gap, applicant_address_y - (applicant_address_box_height / 2) - 4, applicant_address_box3_width, padding=5)
         
         # Add section header for SEPA mandate
-        sepa_y = applicant_address_y - applicant_address_box_height - 30  # Position below guardian box with 30pt gap
+        sepa_y = applicant_address_y - applicant_address_box_height - 50  # Position below guardian box with 50pt gap (increased from 30pt)
         
         # Section heading - bold, 12pt, underlined (same as first header)
         c.setFont("Helvetica-Bold", 12)
@@ -492,7 +603,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         c.line(x, sepa_y - 2, x + sepa_text_width, sepa_y - 2)
         
         # Start the SEPA mandate box
-        sepa_box_y = sepa_y - 30  # Position below section header
+        sepa_box_y = sepa_y - 15  # Position below section header (reduced from 30pt)
         
         # Calculate dimensions for the SEPA box
         sepa_box_height = 120  # Enlarged height to properly enclose inner fields
@@ -520,9 +631,8 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         c.drawString(x + inner_margin + 2, account_holder_y - account_holder_box_height + 2, "Name des Kontoinhabers")
         
         # Add content in 12pt font, left-aligned, baseline in middle of box
-        c.setFont("Helvetica", 12)
         account_holder = data_dict.get('account_holder', '')
-        c.drawString(x + inner_margin + 5, account_holder_y - (account_holder_box_height / 2) - 4, account_holder)
+        draw_text_in_box(account_holder, x + inner_margin, account_holder_y - (account_holder_box_height / 2) - 4, account_holder_box_width)
         
         # Second row: IBAN and BIC (2/3 and 1/3 width)
         iban_bic_y = account_holder_y - account_holder_box_height - 10  # Position below account holder box
@@ -552,11 +662,11 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], output_filename: str) -> N
         if iban:
             # Format IBAN in groups of 4 characters with spaces
             formatted_iban = ' '.join([iban[i:i+4] for i in range(0, len(iban), 4)])
-            c.drawString(x + 15, iban_bic_y - (iban_bic_box_height / 2) - 4, formatted_iban)
+            draw_text_in_box(formatted_iban, x + 10, iban_bic_y - (iban_bic_box_height / 2) - 4, iban_box_width, padding=5)
         
         # BIC box
         bic = data_dict.get('bic', '')
-        c.drawString(x + 15 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic)
+        draw_text_in_box(bic, x + 10 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic_box_width, padding=5)
         
         c.save()
         
