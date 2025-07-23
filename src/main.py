@@ -29,15 +29,14 @@ from pathlib import Path
 
 try:
     # Try relative import first (when run as a module)
-    from .converter import Converter, ConversionError
+    from .csv_converter import convert_csv_to_pdf
 except ImportError:
     try:
         # Try absolute import (when run directly)
-        from converter import Converter, ConversionError
+        from csv_converter import convert_csv_to_pdf
     except ImportError:
         # Handle case where converter dependencies are missing
-        Converter = None
-        ConversionError = Exception
+        convert_csv_to_pdf = None
 
 class FriesenEnrollmentConverterApp:
     def __init__(self):
@@ -47,7 +46,7 @@ class FriesenEnrollmentConverterApp:
         
         # Create main window
         self.root = ctk.CTk()
-        self.root.title("Friesen Enrollment Converter")
+        self.root.title("Friesen CSV Enrollment Converter")
         self.root.resizable(True, True)
         
         # Set window icon - try multiple approaches for compatibility
@@ -111,7 +110,7 @@ class FriesenEnrollmentConverterApp:
         # Title
         title_label = ctk.CTkLabel(
             main_frame, 
-            text="Friesen Enrollment Converter",
+            text="Friesen CSV Enrollment Converter",
             font=ctk.CTkFont(size=24, weight="bold")
         )
         title_label.pack(pady=(20, 25))
@@ -122,7 +121,7 @@ class FriesenEnrollmentConverterApp:
         
         open_label = ctk.CTkLabel(
             open_frame,
-            text="Step 1: Select Enrollment File",
+            text="Step 1: Select CSV Enrollment File",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         open_label.pack(pady=(20, 15))
@@ -163,7 +162,7 @@ class FriesenEnrollmentConverterApp:
         
         convert_label = ctk.CTkLabel(
             convert_frame,
-            text="Step 2: Convert to PDF",
+            text="Step 2: Convert CSV to PDF",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         convert_label.pack(pady=(20, 15))
@@ -192,23 +191,21 @@ class FriesenEnrollmentConverterApp:
         
         self.status_label = ctk.CTkLabel(
             status_frame,
-            text="Ready - Please select an enrollment file to begin",
+            text="Ready - Please select a CSV enrollment file to begin",
             font=ctk.CTkFont(size=12),
             text_color="#00ff00"  # Green color for ready status
         )
         self.status_label.pack(anchor="w", padx=20, pady=(0, 25))  # More bottom padding
         
     def open_file_dialog(self):
-        """Open file dialog to select enrollment file"""
+        """Open file dialog to select CSV enrollment file"""
         file_types = [
-            ("Excel files", "*.xlsx *.xls"),
-            ("Excel 2007+ files", "*.xlsx"),
-            ("Excel Legacy files", "*.xls"),
+            ("CSV files", "*.csv"),
             ("All files", "*.*")
         ]
         
         filename = filedialog.askopenfilename(
-            title="Select enrollment file",
+            title="Select CSV enrollment file",
             filetypes=file_types,
             parent=self.root
         )
@@ -225,13 +222,13 @@ class FriesenEnrollmentConverterApp:
             self.convert_button.configure(state="normal")
             
             # Update status
-            self.update_status(f"File selected: {Path(filename).name} - Ready to convert!", "#00ff00")
+            self.update_status(f"CSV file selected: {Path(filename).name} - Ready to convert!", "#00ff00")
             print(f"Selected file: {filename}")
     
     def convert_file(self):
-        """Open save dialog and copy/convert file"""
+        """Open save dialog and convert CSV file to PDF"""
         if not self.selected_file_path:
-            self.update_status("Please select a file first!", "#ff0000")
+            self.update_status("Please select a CSV file first!", "#ff0000")
             return
         
         # Suggest filename based on original (change to PDF)
@@ -255,33 +252,31 @@ class FriesenEnrollmentConverterApp:
         if filename:  # User didn't cancel
             try:
                 # Check if converter is available
-                if Converter is None:
+                if convert_csv_to_pdf is None:
                     self.update_status("Conversion dependencies not installed. Please install required packages.", "#ff0000")
                     messagebox.showerror(
                         "Missing Dependencies",
-                        "PDF conversion requires additional packages.\n\nPlease install:\npip install openpyxl pypdf reportlab",
+                        "PDF conversion requires additional packages.\n\nPlease install:\npip install reportlab",
                         parent=self.root
                     )
                     return
                 
-                # Convert Excel to PDF using the converter
-                self.update_status("Converting Excel to PDF...", "#ffaa00")
+                # Convert CSV to PDF using the converter
+                self.update_status("Converting CSV to PDF...", "#ffaa00")
                 
-                # Create converter with progress callback
+                # Create progress callback
                 def progress_callback(message):
                     self.update_status(message, "#ffaa00")
                     self.root.update()  # Update UI during conversion
                 
-                converter = Converter(progress_callback=progress_callback)
-                
                 # Perform the conversion
-                converter.convert_excel_to_pdf(self.selected_file_path, filename)
+                convert_csv_to_pdf(self.selected_file_path, filename)
                 
                 self.save_file_path = filename
-                self.update_status(f"Excel successfully converted to PDF: {Path(filename).name}", "#00ff00")
+                self.update_status(f"CSV successfully converted to PDF: {Path(filename).name}", "#00ff00")
                 print(f"File converted to: {filename}")
                 
-            except ConversionError as e:
+            except Exception as e:
                 error_msg = f"Conversion error: {str(e)}"
                 self.update_status(error_msg, "#ff0000")
                 print(f"Conversion error: {e}")

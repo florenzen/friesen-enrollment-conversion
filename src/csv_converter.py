@@ -682,7 +682,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas) -> None:
         raise Exception(f"Error creating PDF page: {e}")
 
 
-def convert(csv_path: str, pdf_path: str) -> None:
+def convert_csv_to_pdf(csv_path: str, pdf_path: str) -> None:
     """
     Read a CSV file and convert all rows to a multi-page PDF.
     
@@ -807,7 +807,7 @@ def main():
     pdf_path = sys.argv[2]
     
     try:
-        convert(csv_path, pdf_path)
+        convert_csv_to_pdf(csv_path, pdf_path)
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)
