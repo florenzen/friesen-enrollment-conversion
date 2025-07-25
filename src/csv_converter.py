@@ -29,6 +29,7 @@ the first row serves as the dictionary keys.
 
 import csv
 import sys
+import re
 from typing import List, Dict, Any
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
@@ -94,6 +95,51 @@ reverse_key_mapping = {}
 for original_key, mapped_key in key_mapping.items():
     if mapped_key is not None:
         reverse_key_mapping[mapped_key] = original_key
+
+def transform_phone_number(phone: str) -> str:
+    """
+    Transform phone number according to specific rules.
+    
+    Args:
+        phone (str): Original phone number
+        
+    Returns:
+        str: Transformed phone number
+    """
+    if not phone or not str(phone).strip():
+        return phone
+    
+    phone_str = str(phone).strip()
+    original_phone = phone_str
+    
+    # Step 1: If the phone content matches a floating point number convert this to an integer
+    # Regex to match full exponential float syntax with comma decimal separator: [+-]?(\d+,?\d*|,\d+)([eE][+-]?\d+)?
+    float_pattern = r'^[+-]?(\d+,?\d*|,\d+)([eE][+-]?\d+)?$'
+    if re.match(float_pattern, phone_str):
+        try:
+            # Convert comma decimal separator to period for float parsing
+            phone_str_for_float = phone_str.replace(',', '.')
+            float_val = float(phone_str_for_float)
+            phone_str = str(int(float_val))
+            print(f"Phone transformation step 1 (float to int): '{original_phone}' -> '{phone_str}'")
+        except (ValueError, TypeError, OverflowError):
+            # Conversion failed, keep original string
+            pass
+    
+    # Step 2: If the phone number starts with "49" add a "+" at the front
+    if phone_str.startswith("49"):
+        phone_str = "+" + phone_str
+        print(f"Phone transformation step 2 (add + for 49): '{original_phone}' -> '{phone_str}'")
+    
+    # Step 3: If the phone number starts with a digit 1..9, add a zero at the front
+    if phone_str and phone_str[0] in "123456789":
+        phone_str = "0" + phone_str
+        print(f"Phone transformation step 3 (add 0 for 1-9): '{original_phone}' -> '{phone_str}'")
+    
+    if phone_str != original_phone:
+        print(f"Final phone transformation: '{original_phone}' -> '{phone_str}'")
+    
+    return phone_str
 
 def read_csv_to_dicts(filename: str) -> List[Dict[str, Any]]:
     """
@@ -547,6 +593,7 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
         
         # Second box: phone
         phone = data_dict.get('phone', '')
+        phone = transform_phone_number(phone)
         draw_text_in_box(phone, x + inner_margin + email_box_width + contact_box_gap, contact_y - (contact_box_height / 2) - 4, phone_box_width, field_key='phone')
         
         # Third box: profession
