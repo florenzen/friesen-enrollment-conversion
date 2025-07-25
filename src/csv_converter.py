@@ -300,6 +300,25 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
         c.setFont("Helvetica", 8)
         c.drawString(zahlernummer_x + 2, zahlernummer_y - top_box_height + 2, "Zahlernummer")
         
+        # Add content to the top boxes
+        c.setFont("Helvetica", 12)
+        
+        # First box: "goal" field into "Unterrichtsziel"
+        goal = data_dict.get('goal', '')
+        draw_text_in_box(goal, unterrichtszie_x, unterrichtszie_y - (top_box_height / 2) - 4, top_box_width, field_key='goal')
+        
+        # Second box: "from" field into "von"
+        from_date = data_dict.get('from', '')
+        draw_text_in_box(from_date, von_x, von_y - (top_box_height / 2) - 4, top_box_width, field_key='from')
+        
+        # Third box: "to" field into "bis"
+        to_date = data_dict.get('to', '')
+        draw_text_in_box(to_date, bis_x, bis_y - (top_box_height / 2) - 4, top_box_width, field_key='to')
+        
+        # Fourth box: "member_id" field into "Mitgliedsnummer"
+        member_id = data_dict.get('member_id', '')
+        draw_text_in_box(member_id, mitgliedsnummer_x, mitgliedsnummer_y - (top_box_height / 2) - 4, top_box_width, field_key='member_id')
+        
         # Shift everything down by 2cm after subtitle
         y -= 2 * cm
         
@@ -438,6 +457,9 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
         # Add family member content in a box if defined
         family_member = data_dict.get('family_member', '')
         if family_member:
+            # Calculate position of "O" in the first line (more precise)
+            o_position = right_x + 1
+            c.drawString(o_position, line1_y, "X")
             # Calculate position for family member box
             family_box_x = right_x + c.stringWidth(right_text_line3, "Helvetica", 10) + 5
             family_box_width = (x + inner_margin + inner_width) - family_box_x - 5  # Fixed width extending to right edge minus 5
@@ -451,16 +473,6 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
             # Add family member text inside the box (same baseline as "Diese sind")
             draw_text_in_box(family_member, family_box_x, line3_y+1, family_box_width, padding=2, field_key='family_member')
         
-        # Overprint "X" on "O" if discount is "ja"
-        discount = data_dict.get('discount', '')
-        if discount is not None:
-            discount = discount.lower()
-        else:
-            discount = ''
-        if discount == 'ja':
-            # Calculate position of "O" in the first line (more precise)
-            o_position = right_x + 1
-            c.drawString(o_position, line1_y, "X")
         
         # Add address row below the discount box
         address_y = discount_y - discount_box_height - 10  # Position below discount box with 10pt gap
