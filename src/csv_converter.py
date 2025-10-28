@@ -31,6 +31,7 @@ import csv
 import sys
 import re
 from typing import List, Dict, Any
+from charset_normalizer import from_path
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
@@ -837,7 +838,7 @@ def convert_csv_to_pdf(csv_path: str, pdf_path: str, debug: bool = False) -> Non
 
 def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
     """
-    Read a CSV file with Windows 1252 encoding and semicolon separators,
+    Read a CSV file with cp1252, cp1250, or utf-8 encoding (auto-detected) and semicolon separators,
     with additional validation and error handling.
     
     Args:
@@ -849,12 +850,51 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
                               
     Raises:
         FileNotFoundError: If the specified file doesn't exist
-        UnicodeDecodeError: If the file cannot be decoded with Windows 1252 encoding
-        ValueError: If the CSV file is empty or has no headers
+        UnicodeDecodeError: If the file cannot be decoded with supported encodings
+        ValueError: If the CSV file is empty, has no headers, or uses an unsupported encoding
         Exception: For other CSV parsing errors
     """
     try:
-        with open(filename, 'r', encoding='windows-1252', newline='') as csvfile:
+        # Detect the encoding using charset-normalizer
+        detection_result = from_path(filename).best()
+        
+        if detection_result is None:
+            raise ValueError(f"Could not detect encoding for file '{filename}'")
+        
+        detected_encoding = detection_result.encoding.lower()
+        print(f"🔍 Detected encoding: {detected_encoding}")
+        
+        # Normalize encoding names and validate
+        # charset-normalizer may return various names for cp1252, cp1250, and utf-8
+        allowed_encodings = {
+            'utf-8': 'utf-8',
+            'utf_8': 'utf-8',
+            'cp1252': 'cp1252',
+            'windows-1252': 'cp1252',
+            'windows_1252': 'cp1252',
+            'iso-8859-1': 'cp1252',  # Often misdetected as ISO-8859-1
+            'iso_8859_1': 'cp1252',
+            'latin-1': 'cp1252',
+            'latin_1': 'cp1252',
+            'cp1250': 'cp1250',
+            'windows-1250': 'cp1250',
+            'windows_1250': 'cp1250',
+            'iso-8859-2': 'cp1250',  # Central European encoding
+            'iso_8859_2': 'cp1250',
+        }
+        
+        # Map detected encoding to normalized encoding
+        normalized_encoding = allowed_encodings.get(detected_encoding)
+        
+        if normalized_encoding is None:
+            raise ValueError(
+                f"Unsupported encoding '{detected_encoding}' detected for file '{filename}'. "
+                f"Only cp1252, cp1250, and utf-8 encodings are supported."
+            )
+        
+        print(f"✅ Using encoding: {normalized_encoding}")
+        
+        with open(filename, 'r', encoding=normalized_encoding, newline='') as csvfile:
             # Read the first line to check if file has content
             first_line = csvfile.readline().strip()
             if not first_line:
@@ -904,7 +944,7 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
     except UnicodeDecodeError as e:
-        raise UnicodeDecodeError(f"Failed to decode file '{filename}' with Windows 1252 encoding: {e}")
+        raise UnicodeDecodeError(f"Failed to decode file '{filename}': {e}")
     except Exception as e:
         raise Exception(f"Error reading CSV file '{filename}': {e}")
 

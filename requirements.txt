@@ -9,3 +9,6 @@ customtkinter>=5.2.0
 # PDF conversion dependencies
 pypdf>=4.0.0
 reportlab>=4.0.0
+
+# Character encoding detection
+charset-normalizer>=3.0.0
