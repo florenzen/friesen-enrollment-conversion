@@ -22,8 +22,10 @@
 """
 Enrollment file converter: CSV (semicolon-delimited) and Excel (.xlsx) to PDF.
 
-CSV files use Windows code pages or UTF-8 (auto-detected). Excel files must
-contain sheet "Daten_zur_Verarbeitung" with headers in the first row.
+CSV files use Windows code pages or UTF-8 (auto-detected). Excel (.xlsx) files
+use sheet "Daten_zur_Verarbeitung" when the workbook has multiple sheets;
+with a single sheet, that sheet is used regardless of name. Headers are in
+the first row.
 """
 
 import csv
@@ -274,7 +276,10 @@ def map_anrede_to_sex(val: Any) -> str:
 
 def read_xlsx_to_mapped_dicts(filename: str) -> List[Dict[str, Any]]:
     """
-    Read sheet Daten_zur_Verarbeitung from an .xlsx file and map columns to PDF field keys.
+    Read an .xlsx file and map columns to PDF field keys.
+
+    If the workbook has a single sheet, that sheet is used regardless of its name.
+    If it has multiple sheets, the sheet named XLSX_SHEET_NAME is used.
     """
     try:
         wb = load_workbook(filename, read_only=True, data_only=True)
@@ -284,17 +289,22 @@ def read_xlsx_to_mapped_dicts(filename: str) -> List[Dict[str, Any]]:
         raise Exception(f"Error opening Excel file '{filename}': {e}")
 
     try:
-        if XLSX_SHEET_NAME not in wb.sheetnames:
+        names = wb.sheetnames
+        if len(names) == 1:
+            sheet_name = names[0]
+        elif XLSX_SHEET_NAME in names:
+            sheet_name = XLSX_SHEET_NAME
+        else:
             raise ValueError(
                 f"Sheet '{XLSX_SHEET_NAME}' not found in '{filename}'. "
-                f"Available sheets: {', '.join(wb.sheetnames)}"
+                f"Available sheets: {', '.join(names)}"
             )
-        ws = wb[XLSX_SHEET_NAME]
+        ws = wb[sheet_name]
         rows_iter = ws.iter_rows(values_only=True)
         try:
             header_row = next(rows_iter)
         except StopIteration:
-            raise ValueError(f"Sheet '{XLSX_SHEET_NAME}' in '{filename}' is empty")
+            raise ValueError(f"Sheet '{sheet_name}' in '{filename}' is empty")
 
         headers: List[str] = []
         for h in header_row:
@@ -304,7 +314,7 @@ def read_xlsx_to_mapped_dicts(filename: str) -> List[Dict[str, Any]]:
                 headers.append(str(h).strip())
 
         if not any(headers):
-            raise ValueError(f"File '{filename}' has no headers in sheet '{XLSX_SHEET_NAME}'")
+            raise ValueError(f"File '{filename}' has no headers in sheet '{sheet_name}'")
 
         data: List[Dict[str, Any]] = []
         for row in rows_iter:
