@@ -20,17 +20,20 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 """
-CSV Converter Module
+Enrollment file converter: CSV (semicolon-delimited) and Excel (.xlsx) to PDF.
 
-This module provides functionality to read CSV files with Windows 1252 encoding
-and semicolon separators, converting them to a list of dictionaries where
-the first row serves as the dictionary keys.
+CSV files use Windows code pages or UTF-8 (auto-detected). Excel files must
+contain sheet "Daten_zur_Verarbeitung" with headers in the first row.
 """
 
 import csv
 import sys
 import re
-from typing import List, Dict, Any
+from datetime import date, datetime
+from pathlib import Path
+from typing import List, Dict, Any, Optional, Tuple
+
+from openpyxl import load_workbook
 from charset_normalizer import from_path
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm, mm
@@ -96,6 +99,249 @@ reverse_key_mapping = {}
 for original_key, mapped_key in key_mapping.items():
     if mapped_key is not None:
         reverse_key_mapping[mapped_key] = original_key
+
+# Excel export: sheet "Daten_zur_Verarbeitung" (see mapping.txt)
+xlsx_key_mapping = {
+    'Anrede': 'sex',
+    'Vorname': 'first_name',
+    'Nachname': 'last_name',
+    'Titel': None,
+    'Firmenname': None,
+    'Mobil': None,
+    'Telefon': None,
+    'E-Mail': None,
+    'Strasse und Nr.': None,
+    'Postleitzahl': None,
+    'Stadt': None,
+    'Land': None,
+    'Geburtstag': 'birth_date',
+    'Geburtsort': None,
+    'Tags': None,
+    'Preis': None,
+    'Notizen (nur für Mitarbeiter sichtbar)': None,
+    'Buchungscode': None,
+    'Eingecheckt am': None,
+    'Buchungen': 'goal',
+    'Veranstaltung von': 'from',
+    'Veranstaltung bis': 'to',
+    'Kunde Anrede': 'applicant_sex',
+    'Kunde Vorname': 'applicant_first_name',
+    'Kunde Nachname': 'applicant_last_name',
+    'Kunde Titel': None,
+    'Kunde Firma': None,
+    'Kunde Mobil': 'phone',
+    'Kunde Telefon': None,
+    'Kunde E-Mail': 'email',
+    'Kunde Notiz': None,
+    'Kunde Tags': None,
+    'Kunde Strasse': 'street',
+    'Kunde Postleitzahl': 'zip',
+    'Kunde Stadt': 'city',
+    'Kunde Land': None,
+    'Kunde Ausstehend': None,
+    'Kunde Fällig': None,
+    'Kunde Gesamtbetrag': None,
+    'Name d. Kontoinhabers': 'account_holder',
+    # Some exports misspell "Beitragskontos" as "Beitagskontos" in the column title
+    'IBAN des Beitagskontos': 'iban',
+    'IBAN des Beitragskontos': 'iban',
+    'BIC des Beitragskontos': 'bic',
+    'Bank des Beitragskontos': 'bank_name',
+}
+
+xlsx_reverse_key_mapping: Dict[str, str] = {}
+for original_key, mapped_key in xlsx_key_mapping.items():
+    if mapped_key is not None:
+        xlsx_reverse_key_mapping[mapped_key] = original_key
+
+XLSX_SHEET_NAME = 'Daten_zur_Verarbeitung'
+
+_DE_IBAN_LEN = 22
+
+
+def normalize_iban(value: Any) -> str:
+    """Strip whitespace and uppercase for IBAN comparison and formatting."""
+    if value is None:
+        return ''
+    return re.sub(r'\s+', '', str(value).strip().upper())
+
+
+def validate_iban(value: Any) -> Optional[str]:
+    """
+    Return None if empty or valid; otherwise a short English error for the GUI.
+    Order: normalize, empty OK, charset, DE length 22, non-DE length 15–34, mod-97.
+    """
+    iban = normalize_iban(value)
+    if not iban:
+        return None
+    if not re.fullmatch(r'[A-Z0-9]+', iban):
+        return 'Invalid format (letters and digits only).'
+    if len(iban) < 2:
+        return 'Invalid format (country code missing).'
+    country = iban[:2]
+    if country == 'DE':
+        if len(iban) != _DE_IBAN_LEN:
+            return f'German (DE) IBAN must be 22 characters (got {len(iban)}).'
+    else:
+        if not (15 <= len(iban) <= 34):
+            return f'Invalid IBAN length ({len(iban)} characters; allowed 15–34).'
+    rearranged = iban[4:] + iban[:4]
+    parts: List[str] = []
+    for ch in rearranged:
+        if ch.isdigit():
+            parts.append(ch)
+        elif 'A' <= ch <= 'Z':
+            parts.append(str(ord(ch) - ord('A') + 10))
+        else:
+            return 'Invalid format.'
+    num_str = ''.join(parts)
+    try:
+        if int(num_str) % 97 != 1:
+            return 'Invalid check digits (mod-97 verification failed).'
+    except ValueError:
+        return 'Invalid format.'
+    return None
+
+
+# ISO 9362 BIC: 4 letters (bank) + 2 letters (country) + 2 alphanumeric (location) + optional 3 (branch)
+_BIC_RE = re.compile(r'^[A-Z]{4}[A-Z]{2}[A-Z0-9]{2}([A-Z0-9]{3})?$')
+
+
+def normalize_bic(value: Any) -> str:
+    """Strip whitespace and uppercase for BIC comparison and display."""
+    if value is None:
+        return ''
+    return re.sub(r'\s+', '', str(value).strip().upper())
+
+
+def validate_bic(value: Any) -> Optional[str]:
+    """Return None if empty or valid BIC; otherwise a short English error for the GUI."""
+    bic = normalize_bic(value)
+    if not bic:
+        return None
+    if len(bic) not in (8, 11):
+        return f'Invalid BIC length ({len(bic)} characters; must be 8 or 11).'
+    if not _BIC_RE.fullmatch(bic):
+        return 'Invalid BIC format (4 bank letters, 2 country letters, 2 location, optional 3 branch).'
+    return None
+
+
+def _filter_nonempty_rows(data: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Drop rows where every value is empty or whitespace-only."""
+    filtered_data: List[Dict[str, Any]] = []
+    for row in data:
+        has_content = False
+        for value in row.values():
+            if value and str(value).strip():
+                has_content = True
+                break
+        if has_content:
+            filtered_data.append(row)
+    print(f"📊 Filtered {len(data) - len(filtered_data)} empty/whitespace rows from {len(data)} total rows")
+    return filtered_data
+
+
+def _normalize_xlsx_cell(value: Any) -> str:
+    """Turn openpyxl cell values into display strings for the PDF pipeline."""
+    if value is None:
+        return ''
+    if isinstance(value, datetime):
+        if value.hour == 0 and value.minute == 0 and value.second == 0 and value.microsecond == 0:
+            return value.strftime('%d.%m.%Y')
+        return value.strftime('%d.%m.%Y %H:%M')
+    if isinstance(value, date):
+        return value.strftime('%d.%m.%Y')
+    if isinstance(value, bool):
+        return 'Ja' if value else 'Nein'
+    if isinstance(value, float):
+        if value == int(value):
+            return str(int(value))
+        return str(value)
+    if isinstance(value, int):
+        return str(value)
+    return str(value).strip()
+
+
+def map_anrede_to_sex(val: Any) -> str:
+    """Map Excel salutation (Herr/Frau/Divers) to PDF gender labels."""
+    if val is None or (isinstance(val, str) and not val.strip()):
+        return ''
+    s = str(val).strip()
+    low = s.lower()
+    mapped = {'herr': 'männlich', 'frau': 'weiblich', 'divers': 'divers'}
+    return mapped.get(low, s)
+
+
+def read_xlsx_to_mapped_dicts(filename: str) -> List[Dict[str, Any]]:
+    """
+    Read sheet Daten_zur_Verarbeitung from an .xlsx file and map columns to PDF field keys.
+    """
+    try:
+        wb = load_workbook(filename, read_only=True, data_only=True)
+    except FileNotFoundError:
+        raise FileNotFoundError(f"File '{filename}' not found")
+    except Exception as e:
+        raise Exception(f"Error opening Excel file '{filename}': {e}")
+
+    try:
+        if XLSX_SHEET_NAME not in wb.sheetnames:
+            raise ValueError(
+                f"Sheet '{XLSX_SHEET_NAME}' not found in '{filename}'. "
+                f"Available sheets: {', '.join(wb.sheetnames)}"
+            )
+        ws = wb[XLSX_SHEET_NAME]
+        rows_iter = ws.iter_rows(values_only=True)
+        try:
+            header_row = next(rows_iter)
+        except StopIteration:
+            raise ValueError(f"Sheet '{XLSX_SHEET_NAME}' in '{filename}' is empty")
+
+        headers: List[str] = []
+        for h in header_row:
+            if h is None:
+                headers.append('')
+            else:
+                headers.append(str(h).strip())
+
+        if not any(headers):
+            raise ValueError(f"File '{filename}' has no headers in sheet '{XLSX_SHEET_NAME}'")
+
+        data: List[Dict[str, Any]] = []
+        for row in rows_iter:
+            cells = list(row)
+            row_dict: Dict[str, str] = {}
+            for i, header in enumerate(headers):
+                if not header:
+                    continue
+                val = cells[i] if i < len(cells) else None
+                row_dict[header] = _normalize_xlsx_cell(val)
+
+            converted_row: Dict[str, Any] = {}
+            for original_key, mapped_key in xlsx_key_mapping.items():
+                if mapped_key is None:
+                    continue
+                val = row_dict.get(original_key, '')
+                if mapped_key not in converted_row:
+                    converted_row[mapped_key] = val
+                else:
+                    existing = converted_row[mapped_key]
+                    if (not existing or not str(existing).strip()) and val and str(val).strip():
+                        converted_row[mapped_key] = val
+
+            if 'sex' in converted_row:
+                converted_row['sex'] = map_anrede_to_sex(converted_row.get('sex', ''))
+            if 'applicant_sex' in converted_row:
+                converted_row['applicant_sex'] = map_anrede_to_sex(converted_row.get('applicant_sex', ''))
+
+            data.append(converted_row)
+
+        if not data:
+            print(f"Warning: File '{filename}' contains only headers, no data rows")
+
+        return _filter_nonempty_rows(data)
+    finally:
+        wb.close()
+
 
 def transform_phone_number(phone: str) -> str:
     """
@@ -171,7 +417,14 @@ def read_csv_to_dicts(filename: str) -> List[Dict[str, Any]]:
         raise Exception(f"Error reading CSV file '{filename}': {e}")
 
 
-def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: bool = False) -> None:
+def generate_pdf_from_dict(
+    data_dict: Dict[str, Any],
+    c: canvas.Canvas,
+    debug: bool = False,
+    debug_reverse_mapping: Optional[Dict[str, str]] = None,
+    mark_iban_invalid: bool = False,
+    mark_bic_invalid: bool = False,
+) -> None:
     """
     Generate a one-page PDF from a dictionary row with specific formatting.
     
@@ -179,12 +432,16 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
         data_dict (Dict[str, Any]): Dictionary containing the row data
         c (canvas.Canvas): Canvas object to draw on
         debug (bool): If True, show source keys as labels in top-right corner of fields
+        debug_reverse_mapping: mapped_key -> source column name for debug labels (defaults to CSV mapping)
+        mark_iban_invalid: If True, prefix IBAN text with !!Ungültig!! (non-empty IBAN only)
+        mark_bic_invalid: If True, prefix BIC text with !!Ungültig!! (non-empty BIC only)
         
     Raises:
         Exception: If there's an error creating the PDF
     """
     try:
-        
+        rev_map = debug_reverse_mapping if debug_reverse_mapping is not None else reverse_key_mapping
+
         # Define a very light grey color (95% white, 5% black)
         light_grey = Color(0.95, 0.95, 0.95)
         
@@ -239,8 +496,8 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
                 c.drawString(x + padding, y, text)
             
             # Draw debug label if field_key is provided (always show, even if no data)
-            if field_key and field_key in reverse_key_mapping:
-                original_key = reverse_key_mapping[field_key]
+            if field_key and field_key in rev_map:
+                original_key = rev_map[field_key]
                 # Estimate box height based on font size
                 box_height = font_size + 8  # Approximate height
                 draw_debug_label(original_key, x, y, box_width, box_height)
@@ -780,59 +1037,117 @@ def generate_pdf_from_dict(data_dict: Dict[str, Any], c: canvas.Canvas, debug: b
         # Add content in 12pt font, left-aligned, baseline in middle of boxes
         c.setFont("Helvetica", 12)
         
-        # IBAN box with formatting
+        # IBAN box with formatting (normalize so spaces in source do not break groups)
         iban = data_dict.get('iban', '')
-        if iban:
-            # Format IBAN in groups of 4 characters with spaces
-            formatted_iban = ' '.join([iban[i:i+4] for i in range(0, len(iban), 4)])
-            draw_text_in_box(formatted_iban, x + 10, iban_bic_y - (iban_bic_box_height / 2) - 4, iban_box_width, padding=5, field_key='iban')
+        normalized_iban = normalize_iban(iban)
+        if normalized_iban:
+            formatted_iban = ' '.join([normalized_iban[i:i + 4] for i in range(0, len(normalized_iban), 4)])
+            display_iban = ('!!Ungültig!! ' + formatted_iban) if mark_iban_invalid else formatted_iban
+            draw_text_in_box(display_iban, x + 10, iban_bic_y - (iban_bic_box_height / 2) - 4, iban_box_width, padding=5, field_key='iban')
         
-        # BIC box
+        # BIC box (normalize whitespace for display)
         bic = data_dict.get('bic', '')
-        draw_text_in_box(bic, x + 10 + iban_box_width + iban_bic_gap, iban_bic_y - (iban_bic_box_height / 2) - 4, bic_box_width, padding=5, field_key='bic')
+        normalized_bic = normalize_bic(bic)
+        if normalized_bic:
+            display_bic = ('!!Ungültig!! ' + normalized_bic) if mark_bic_invalid else normalized_bic
+            draw_text_in_box(
+                display_bic,
+                x + 10 + iban_box_width + iban_bic_gap,
+                iban_bic_y - (iban_bic_box_height / 2) - 4,
+                bic_box_width,
+                padding=5,
+                field_key='bic',
+            )
         
     except Exception as e:
         raise Exception(f"Error creating PDF page: {e}")
 
 
-def convert_csv_to_pdf(csv_path: str, pdf_path: str, debug: bool = False) -> None:
+def convert_enrollment_file_to_pdf(
+    input_path: str,
+    pdf_path: str,
+    debug: bool = False,
+    validation_issues: Optional[List[str]] = None,
+    iban_validation_issues: Optional[List[str]] = None,
+) -> None:
     """
-    Read a CSV file and convert all rows to a multi-page PDF.
-    
+    Read a CSV or XLSX enrollment file and convert all rows to a multi-page PDF.
+
     Args:
-        csv_path (str): Path to the input CSV file
-        pdf_path (str): Path where the output PDF should be saved
-        debug (bool): If True, show source keys as labels in top-right corner of fields
-        
+        input_path: Path to the input file (.csv or .xlsx)
+        pdf_path: Path where the output PDF should be saved
+        debug: If True, show source column names as labels in top-right corner of fields
+        validation_issues: If provided, XLSX rows append one line per issue:
+            \"IBAN: <holder>: <message>\" or \"BIC: <holder>: <message>\".
+        iban_validation_issues: Deprecated alias for validation_issues (if both passed, validation_issues wins).
+
     Raises:
-        Exception: If there's an error reading the CSV or creating the PDF
+        Exception: If there's an error reading the input or creating the PDF
+        ValueError: If the file extension is not supported
     """
+    suffix = Path(input_path).suffix.lower()
+    if suffix == '.csv':
+        data_list = read_csv_to_dicts_with_validation(input_path)
+        debug_rev: Optional[Dict[str, str]] = None
+        validate_ibans_for_input = False
+    elif suffix == '.xlsx':
+        data_list = read_xlsx_to_mapped_dicts(input_path)
+        debug_rev = xlsx_reverse_key_mapping
+        validate_ibans_for_input = True
+    else:
+        raise ValueError(
+            f"Unsupported file type '{suffix}'. Use .csv or .xlsx (legacy .xls is not supported)."
+        )
+
+    issues_sink = validation_issues if validation_issues is not None else iban_validation_issues
+
     try:
-        # Read the CSV file
-        data_list = read_csv_to_dicts_with_validation(csv_path)
-        
         if not data_list:
-            raise Exception("CSV file contains no data rows")
-        
-        # Create canvas for multi-page PDF
+            raise Exception(f"Input file contains no data rows: {input_path}")
+
         c = canvas.Canvas(pdf_path, pagesize=A4)
-        
-        # Process each row
+
         for i, row in enumerate(data_list):
-            # Generate PDF page for this row
-            generate_pdf_from_dict(row, c, debug)
-            
-            # Add a new page if this isn't the last row
+            mark_iban_invalid = False
+            mark_bic_invalid = False
+            if validate_ibans_for_input:
+                holder = row.get('account_holder') or '(no account holder)'
+                iban_raw = row.get('iban', '')
+                if normalize_iban(iban_raw):
+                    err = validate_iban(iban_raw)
+                    if err is not None:
+                        mark_iban_invalid = True
+                        if issues_sink is not None:
+                            issues_sink.append(f'IBAN: {holder}: {err}')
+                bic_raw = row.get('bic', '')
+                if normalize_bic(bic_raw):
+                    err_b = validate_bic(bic_raw)
+                    if err_b is not None:
+                        mark_bic_invalid = True
+                        if issues_sink is not None:
+                            issues_sink.append(f'BIC: {holder}: {err_b}')
+            generate_pdf_from_dict(
+                row,
+                c,
+                debug,
+                debug_reverse_mapping=debug_rev,
+                mark_iban_invalid=mark_iban_invalid,
+                mark_bic_invalid=mark_bic_invalid,
+            )
             if i < len(data_list) - 1:
                 c.showPage()
-        
-        # Save the PDF
+
         c.save()
-        
-        print(f"✅ Successfully converted {len(data_list)} rows from '{csv_path}' to '{pdf_path}'")
-        
+
+        print(f"✅ Successfully converted {len(data_list)} rows from '{input_path}' to '{pdf_path}'")
+
     except Exception as e:
         raise Exception(f"Error in conversion process: {e}")
+
+
+def convert_csv_to_pdf(csv_path: str, pdf_path: str, debug: bool = False) -> None:
+    """Backward-compatible alias for CSV-only callers; accepts .xlsx via convert_enrollment_file_to_pdf."""
+    convert_enrollment_file_to_pdf(csv_path, pdf_path, debug)
 
 
 
@@ -924,22 +1239,7 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
                         converted_row[mapped_key] = row.get(original_key, '')
                 data[i] = converted_row
             
-            # Filter out empty or whitespace-only rows
-            filtered_data = []
-            for row in data:
-                # Check if any field has non-empty, non-whitespace content
-                has_content = False
-                for value in row.values():
-                    if value and str(value).strip():
-                        has_content = True
-                        break
-                
-                if has_content:
-                    filtered_data.append(row)
-            
-            print(f"📊 Filtered {len(data) - len(filtered_data)} empty/whitespace rows from {len(data)} total rows")
-            
-            return filtered_data
+            return _filter_nonempty_rows(data)
             
     except FileNotFoundError:
         raise FileNotFoundError(f"File '{filename}' not found")
@@ -952,9 +1252,9 @@ def read_csv_to_dicts_with_validation(filename: str) -> List[Dict[str, Any]]:
 def main():
     """Main function to handle command line arguments"""
     if len(sys.argv) < 3 or len(sys.argv) > 4:
-        print("Usage: python csv_converter.py <input_csv_path> <output_pdf_path> [--no-debug]")
+        print("Usage: python csv_converter.py <input_csv_or_xlsx_path> <output_pdf_path> [--no-debug]")
         print("Example: python csv_converter.py enrollments.csv output.pdf")
-        print("Example: python csv_converter.py enrollments.csv output.pdf --no-debug")
+        print("Example: python csv_converter.py enrollments.xlsx output.pdf --no-debug")
         sys.exit(1)
     
     csv_path = sys.argv[1]
@@ -962,7 +1262,7 @@ def main():
     debug = True if len(sys.argv) == 3 or sys.argv[3] != "--no-debug" else False
     
     try:
-        convert_csv_to_pdf(csv_path, pdf_path, debug)
+        convert_enrollment_file_to_pdf(csv_path, pdf_path, debug)
     except Exception as e:
         print(f"❌ Error: {e}")
         sys.exit(1)

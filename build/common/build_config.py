@@ -60,6 +60,7 @@ COMMON_HIDDEN_IMPORTS = [
     "csv_converter",
     "src.csv_converter",
     # PDF conversion dependencies
+    "openpyxl",
     "reportlab",
     "reportlab.pdfgen",
     "reportlab.pdfgen.canvas",

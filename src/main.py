@@ -29,14 +29,14 @@ from pathlib import Path
 
 try:
     # Try relative import first (when run as a module)
-    from .csv_converter import convert_csv_to_pdf
+    from .csv_converter import convert_enrollment_file_to_pdf
 except ImportError:
     try:
         # Try absolute import (when run directly)
-        from csv_converter import convert_csv_to_pdf
+        from csv_converter import convert_enrollment_file_to_pdf
     except ImportError:
         # Handle case where converter dependencies are missing
-        convert_csv_to_pdf = None
+        convert_enrollment_file_to_pdf = None
 
 class FriesenEnrollmentConverterApp:
     def __init__(self):
@@ -46,7 +46,7 @@ class FriesenEnrollmentConverterApp:
         
         # Create main window
         self.root = ctk.CTk()
-        self.root.title("Friesen CSV Enrollment Converter")
+        self.root.title("Friesen Enrollment Converter")
         self.root.resizable(True, True)
         
         # Set window icon - try multiple approaches for compatibility
@@ -63,8 +63,8 @@ class FriesenEnrollmentConverterApp:
         
         # Set size after widgets are created to ensure everything fits
         self.root.update_idletasks()  # Calculate required size
-        self.root.geometry("800x700")  # Increased size to accommodate all content including full status text
-        self.root.minsize(750, 650)    # Increased minimum size to ensure all content is always visible
+        self.root.geometry("800x840")
+        self.root.minsize(750, 780)
     
     def _set_window_icon(self):
         """Set the window icon using multiple fallback methods"""
@@ -113,7 +113,7 @@ class FriesenEnrollmentConverterApp:
         # Title
         title_label = ctk.CTkLabel(
             main_frame, 
-            text="Friesen CSV Enrollment Converter",
+            text="Friesen Enrollment Converter",
             font=ctk.CTkFont(size=24, weight="bold")
         )
         title_label.pack(pady=(20, 25))
@@ -124,7 +124,7 @@ class FriesenEnrollmentConverterApp:
         
         open_label = ctk.CTkLabel(
             open_frame,
-            text="Step 1: Select CSV Enrollment File",
+            text="Step 1: Select CSV or Excel enrollment file",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         open_label.pack(pady=(20, 15))
@@ -165,7 +165,7 @@ class FriesenEnrollmentConverterApp:
         
         convert_label = ctk.CTkLabel(
             convert_frame,
-            text="Step 2: Convert CSV to PDF",
+            text="Step 2: Convert to PDF",
             font=ctk.CTkFont(size=16, weight="bold")
         )
         convert_label.pack(pady=(20, 15))
@@ -199,15 +199,15 @@ class FriesenEnrollmentConverterApp:
         # Debug help text
         debug_help = ctk.CTkLabel(
             convert_frame,
-            text="Debug: Shows CSV column names as red labels in fields",
+            text="Debug: Shows source column names as red labels in fields",
             font=ctk.CTkFont(size=10),
             text_color="#888888"
         )
         debug_help.pack(pady=(0, 0))
         
-        # Status section
+        # Status + errors: grows with window height so the log fills space to the bottom
         status_frame = ctk.CTkFrame(main_frame)
-        status_frame.pack(fill="x", padx=20, pady=(0, 30))  # Extra bottom padding
+        status_frame.pack(fill="both", expand=True, padx=20, pady=(0, 20))
         
         status_title = ctk.CTkLabel(
             status_frame,
@@ -218,21 +218,79 @@ class FriesenEnrollmentConverterApp:
         
         self.status_label = ctk.CTkLabel(
             status_frame,
-            text="Ready - Please select a CSV enrollment file to begin",
+            text="Ready - Please select a CSV or Excel (.xlsx) enrollment file to begin",
             font=ctk.CTkFont(size=12),
             text_color="#00ff00"  # Green color for ready status
         )
-        self.status_label.pack(anchor="w", padx=20, pady=(0, 25))  # More bottom padding
+        self.status_label.pack(anchor="w", padx=20, pady=(0, 12))
+        
+        # Error log (IBAN/BIC issues after Excel conversion; ~3 lines visible, scrollable)
+        errors_header = ctk.CTkFrame(status_frame, fg_color="transparent")
+        errors_header.pack(fill="x", padx=20, pady=(8, 4))
+        errors_title = ctk.CTkLabel(
+            errors_header,
+            text="Errors:",
+            font=ctk.CTkFont(size=14, weight="bold")
+        )
+        errors_title.pack(side="left", anchor="w")
+        self.copy_errors_button = ctk.CTkButton(
+            errors_header,
+            text="Copy to clipboard",
+            width=140,
+            height=28,
+            command=self._copy_errors_to_clipboard,
+            font=ctk.CTkFont(size=12),
+        )
+        self.copy_errors_button.pack(side="right", anchor="e")
+        
+        # Minimum height ~3 lines; expands vertically with the window
+        self.iban_issues_text = ctk.CTkTextbox(
+            status_frame,
+            height=100,
+            font=ctk.CTkFont(size=11),
+            text_color="#ff5555",
+            wrap="word",
+            activate_scrollbars=True,
+        )
+        self.iban_issues_text.pack(fill="both", expand=True, padx=20, pady=(0, 16))
+        self.iban_issues_text.insert("1.0", "")
+        self.iban_issues_text.configure(state="disabled")
+        
+    def _copy_errors_to_clipboard(self) -> None:
+        """Copy current error log text to the system clipboard."""
+        try:
+            content = self.iban_issues_text.get("1.0", "end-1c").strip()
+            if not content:
+                return
+            self.root.clipboard_clear()
+            self.root.clipboard_append(content)
+            self.root.update_idletasks()
+        except tk.TclError:
+            return
+        self.update_status("Error list copied to clipboard.", "#00ff00")
+        
+    def _set_iban_log(self, text: str) -> None:
+        """Replace read-only IBAN log content (errors in red, success line in green)."""
+        self.iban_issues_text.configure(state="normal")
+        self.iban_issues_text.delete("1.0", "end")
+        if text.startswith("No validation errors") or text.startswith("no IBAN errors"):
+            self.iban_issues_text.configure(text_color="#55dd88")
+        else:
+            self.iban_issues_text.configure(text_color="#ff5555")
+        if text:
+            self.iban_issues_text.insert("1.0", text)
+        self.iban_issues_text.configure(state="disabled")
         
     def open_file_dialog(self):
-        """Open file dialog to select CSV enrollment file"""
+        """Open file dialog to select CSV or Excel enrollment file"""
         file_types = [
             ("CSV files", "*.csv"),
+            ("Excel files", "*.xlsx"),
             ("All files", "*.*")
         ]
         
         filename = filedialog.askopenfilename(
-            title="Select CSV enrollment file",
+            title="Select enrollment file (CSV or Excel)",
             filetypes=file_types,
             parent=self.root
         )
@@ -249,13 +307,13 @@ class FriesenEnrollmentConverterApp:
             self.convert_button.configure(state="normal")
             
             # Update status
-            self.update_status(f"CSV file selected: {Path(filename).name} - Ready to convert!", "#00ff00")
+            self.update_status(f"File selected: {Path(filename).name} - Ready to convert!", "#00ff00")
             print(f"Selected file: {filename}")
     
     def convert_file(self):
-        """Open save dialog and convert CSV file to PDF"""
+        """Open save dialog and convert enrollment file to PDF"""
         if not self.selected_file_path:
-            self.update_status("Please select a CSV file first!", "#ff0000")
+            self.update_status("Please select a file first!", "#ff0000")
             return
         
         # Suggest filename based on original (change to PDF)
@@ -279,28 +337,36 @@ class FriesenEnrollmentConverterApp:
         if filename:  # User didn't cancel
             try:
                 # Check if converter is available
-                if convert_csv_to_pdf is None:
+                if convert_enrollment_file_to_pdf is None:
                     self.update_status("Conversion dependencies not installed. Please install required packages.", "#ff0000")
                     messagebox.showerror(
                         "Missing Dependencies",
-                        "PDF conversion requires additional packages.\n\nPlease install:\npip install reportlab",
+                        "PDF conversion requires additional packages.\n\nPlease install:\npip install reportlab openpyxl",
                         parent=self.root
                     )
                     return
                 
-                # Convert CSV to PDF using the converter
-                self.update_status("Converting CSV to PDF...", "#ffaa00")
+                self.update_status("Converting to PDF...", "#ffaa00")
+                self._set_iban_log("")
                 
-                # Create progress callback
-                def progress_callback(message):
-                    self.update_status(message, "#ffaa00")
-                    self.root.update()  # Update UI during conversion
-                
-                # Perform the conversion
-                convert_csv_to_pdf(self.selected_file_path, filename, debug=self.debug_mode.get())
+                validation_issues: list = []
+                is_xlsx = original_path.suffix.lower() == ".xlsx"
+                convert_enrollment_file_to_pdf(
+                    self.selected_file_path,
+                    filename,
+                    debug=self.debug_mode.get(),
+                    validation_issues=validation_issues if is_xlsx else None,
+                )
                 
                 self.save_file_path = filename
-                self.update_status(f"CSV successfully converted to PDF: {Path(filename).name}", "#00ff00")
+                self.update_status(f"Successfully converted to PDF: {Path(filename).name}", "#00ff00")
+                if is_xlsx:
+                    if validation_issues:
+                        self._set_iban_log("\n".join(validation_issues))
+                    else:
+                        self._set_iban_log("No validation errors.")
+                else:
+                    self._set_iban_log("")
                 print(f"File converted to: {filename}")
                 
             except Exception as e:
@@ -311,17 +377,6 @@ class FriesenEnrollmentConverterApp:
                 # Show error message
                 messagebox.showerror(
                     "Conversion Error", 
-                    f"Failed to convert file:\n{str(e)}",
-                    parent=self.root
-                )
-            except Exception as e:
-                error_msg = f"Unexpected error: {str(e)}"
-                self.update_status(error_msg, "#ff0000")
-                print(f"Error: {e}")
-                
-                # Show error message
-                messagebox.showerror(
-                    "Error", 
                     f"Failed to convert file:\n{str(e)}",
                     parent=self.root
                 )
