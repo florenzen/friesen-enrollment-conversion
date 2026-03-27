@@ -158,6 +158,10 @@ for original_key, mapped_key in xlsx_key_mapping.items():
 
 XLSX_SHEET_NAME = 'Daten_zur_Verarbeitung'
 
+# Excel imports: fixed "von"/"bis" dates for the PDF (ignore sheet values).
+XLSX_FIXED_FROM_DATE = '09.02.2026'
+XLSX_FIXED_TO_DATE = '05.07.2026'
+
 _DE_IBAN_LEN = 22
 
 
@@ -342,6 +346,9 @@ def read_xlsx_to_mapped_dicts(filename: str) -> List[Dict[str, Any]]:
                 converted_row['sex'] = map_anrede_to_sex(converted_row.get('sex', ''))
             if 'applicant_sex' in converted_row:
                 converted_row['applicant_sex'] = map_anrede_to_sex(converted_row.get('applicant_sex', ''))
+
+            converted_row['from'] = XLSX_FIXED_FROM_DATE
+            converted_row['to'] = XLSX_FIXED_TO_DATE
 
             data.append(converted_row)
 
